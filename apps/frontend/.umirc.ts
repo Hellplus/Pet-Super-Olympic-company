@@ -43,5 +43,42 @@ export default defineConfig({
         { name: '系统配置', path: '/system/config', component: './System/Config' },
       ],
     },
+    {
+      name: '分会与人事',
+      path: '/branch-hr',
+      icon: 'BankOutlined',
+      routes: [
+        { name: '入驻申请', path: '/branch-hr/application', component: './BranchHr/Application' },
+        { name: '专业人才库', path: '/branch-hr/expert', component: './BranchHr/Expert' },
+      ],
+    },
+    {
+      name: '财务内控',
+      path: '/finance',
+      icon: 'AccountBookOutlined',
+      routes: [
+        { name: '收款登记', path: '/finance/revenue', component: './Finance/Revenue' },
+        { name: '预算管理', path: '/finance/budget', component: './Finance/Budget' },
+        { name: '报销/付款', path: '/finance/expense', component: './Finance/Expense' },
+      ],
+    },
+    {
+      name: '招商合规',
+      path: '/sponsorship',
+      icon: 'ShopOutlined',
+      routes: [
+        { name: '品类保护', path: '/sponsorship/protected-category', component: './Sponsorship/ProtectedCategory' },
+        { name: '赞助合同', path: '/sponsorship/contract', component: './Sponsorship/Contract' },
+      ],
+    },
+    {
+      name: '赛事管理',
+      path: '/event',
+      icon: 'TrophyOutlined',
+      routes: [
+        { name: '赛事列表', path: '/event/list', component: './Event/EventList' },
+        { name: '内部公告', path: '/event/announcement', component: './Event/Announcement' },
+      ],
+    },
   ],
 });

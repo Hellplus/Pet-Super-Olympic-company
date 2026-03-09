@@ -1,0 +1,153 @@
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Event } from './entities/event.entity';
+import { SopTemplate } from './entities/sop-template.entity';
+import { SopTemplateTask } from './entities/sop-template-task.entity';
+import { EventTask } from './entities/event-task.entity';
+import { Announcement } from './entities/announcement.entity';
+import { AnnouncementRead } from './entities/announcement-read.entity';
+import { DigitalAsset } from './entities/digital-asset.entity';
+import { CreateEventDto, QueryEventDto, CreateSopTemplateDto, CreateAnnouncementDto } from './dto/event.dto';
+import { paginate } from '../../common/utils/pagination.util';
+
+@Injectable()
+export class EventService {
+  constructor(
+    @InjectRepository(Event) private readonly eventRepo: Repository<Event>,
+    @InjectRepository(SopTemplate) private readonly sopRepo: Repository<SopTemplate>,
+    @InjectRepository(SopTemplateTask) private readonly sopTaskRepo: Repository<SopTemplateTask>,
+    @InjectRepository(EventTask) private readonly eventTaskRepo: Repository<EventTask>,
+    @InjectRepository(Announcement) private readonly annRepo: Repository<Announcement>,
+    @InjectRepository(AnnouncementRead) private readonly readRepo: Repository<AnnouncementRead>,
+    @InjectRepository(DigitalAsset) private readonly assetRepo: Repository<DigitalAsset>,
+  ) {}
+
+  // ====== 赛事 CRUD ======
+  async createEvent(dto: CreateEventDto, userId: string) {
+    const code = 'EVT' + Date.now().toString(36).toUpperCase();
+    const event = await this.eventRepo.save(this.eventRepo.create({ ...dto, eventCode: code, createdBy: userId }));
+    // 如果指定了SOP模板,自动派发任务
+    if (dto.sopTemplateId) {
+      await this.dispatchSopTasks(event.id, dto.sopTemplateId, new Date(dto.eventDate));
+    }
+    return event;
+  }
+
+  async findAllEvents(query: QueryEventDto) {
+    const qb = this.eventRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
+    if (query.orgId) qb.andWhere('entity.org_id = :o', { o: query.orgId });
+    if (query.status !== undefined) qb.andWhere('entity.status = :s', { s: query.status });
+    if (query.eventName) qb.andWhere('entity.event_name LIKE :n', { n: `%${query.eventName}%` });
+    qb.orderBy('entity.event_date', 'DESC');
+    return paginate(qb, query);
+  }
+
+  async findEventById(id: string) {
+    const event = await this.eventRepo.findOne({ where: { id }, relations: ['organization'] });
+    if (!event) throw new NotFoundException('赛事不存在');
+    const tasks = await this.eventTaskRepo.find({ where: { eventId: id }, order: { sortOrder: 'ASC' } });
+    return { ...event, tasks };
+  }
+
+  async updateEventStatus(id: string, status: number) {
+    await this.eventRepo.update(id, { status });
+  }
+
+  // ====== SOP 模板 ======
+  async createSopTemplate(dto: CreateSopTemplateDto) {
+    const template = await this.sopRepo.save(this.sopRepo.create({
+      templateName: dto.templateName, eventType: dto.eventType, description: dto.description,
+    }));
+    if (dto.tasks?.length) {
+      const tasks = dto.tasks.map((t, i) => this.sopTaskRepo.create({
+        templateId: template.id, taskName: t.taskName, daysBeforeEvent: t.daysBeforeEvent,
+        defaultRole: t.defaultRole, description: t.description, isRequired: t.isRequired ?? true, sortOrder: i,
+      }));
+      await this.sopTaskRepo.save(tasks);
+    }
+    return template;
+  }
+
+  async findAllSopTemplates() {
+    return this.sopRepo.find({ order: { createdAt: 'DESC' } });
+  }
+
+  async findSopTemplateById(id: string) {
+    const t = await this.sopRepo.findOne({ where: { id } });
+    if (!t) throw new NotFoundException('模板不存在');
+    const tasks = await this.sopTaskRepo.find({ where: { templateId: id }, order: { sortOrder: 'ASC' } });
+    return { ...t, tasks };
+  }
+
+  /** 根据SOP模板+开赛日期自动派发任务 */
+  private async dispatchSopTasks(eventId: string, templateId: string, eventDate: Date) {
+    const templateTasks = await this.sopTaskRepo.find({ where: { templateId }, order: { sortOrder: 'ASC' } });
+    const eventTasks = templateTasks.map((tt, i) => {
+      const deadline = new Date(eventDate);
+      deadline.setDate(deadline.getDate() - tt.daysBeforeEvent);
+      return this.eventTaskRepo.create({
+        eventId, taskName: tt.taskName, deadline, sortOrder: i,
+      });
+    });
+    await this.eventTaskRepo.save(eventTasks);
+  }
+
+  // ====== 赛事任务 ======
+  async updateTaskStatus(taskId: string, status: number, feedback?: string) {
+    const update: any = { status };
+    if (status === 2) update.completedAt = new Date();
+    if (feedback) update.feedback = feedback;
+    await this.eventTaskRepo.update(taskId, update);
+  }
+
+  async getEventProgress(eventId: string) {
+    const tasks = await this.eventTaskRepo.find({ where: { eventId } });
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.status === 2).length;
+    const overdue = tasks.filter(t => t.status !== 2 && t.status !== 9 && new Date(t.deadline) < new Date()).length;
+    return { total, completed, overdue, progress: total > 0 ? Math.round(completed / total * 100) : 0 };
+  }
+
+  // ====== 公告 ======
+  async createAnnouncement(dto: CreateAnnouncementDto, userId: string, userName: string) {
+    return this.annRepo.save(this.annRepo.create({
+      ...dto, publisherId: userId, publisherName: userName,
+    }));
+  }
+
+  async publishAnnouncement(id: string) {
+    await this.annRepo.update(id, { status: 1, publishedAt: new Date() });
+  }
+
+  async findAllAnnouncements() {
+    return this.annRepo.find({ order: { publishedAt: 'DESC' } });
+  }
+
+  async markAsRead(announcementId: string, userId: string, userName: string) {
+    const existing = await this.readRepo.findOne({ where: { announcementId, userId } });
+    if (!existing) {
+      await this.readRepo.save(this.readRepo.create({ announcementId, userId, userName, readAt: new Date() }));
+      await this.annRepo.createQueryBuilder().update(Announcement)
+        .set({ readCount: () => 'read_count + 1' })
+        .where('id = :id', { id: announcementId }).execute();
+    }
+  }
+
+  async getReadStatus(announcementId: string) {
+    return this.readRepo.find({ where: { announcementId }, order: { readAt: 'ASC' } });
+  }
+
+  // ====== 数字资产 ======
+  async uploadAsset(data: Partial<DigitalAsset>) {
+    // 旧版作废
+    if (data.assetName) {
+      await this.assetRepo.update({ assetName: data.assetName, isLatest: true }, { isLatest: false, status: 0 });
+    }
+    return this.assetRepo.save(this.assetRepo.create({ ...data, isLatest: true, status: 1 }));
+  }
+
+  async findAllAssets() {
+    return this.assetRepo.find({ where: { isLatest: true, status: 1 }, order: { createdAt: 'DESC' } });
+  }
+}
