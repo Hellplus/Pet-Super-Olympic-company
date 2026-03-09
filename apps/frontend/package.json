@@ -1,0 +1,24 @@
+{
+  "name": "@ipoc/frontend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "max dev",
+    "build": "max build",
+    "lint": "eslint src --ext .ts,.tsx",
+    "preview": "max preview"
+  },
+  "dependencies": {
+    "@ant-design/icons": "^5.5.0",
+    "@ant-design/pro-components": "^2.7.0",
+    "@umijs/max": "^4.4.0",
+    "antd": "^5.22.0",
+    "axios": "^1.7.0",
+    "@ipoc/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "typescript": "^5.5.0"
+  }
+}
