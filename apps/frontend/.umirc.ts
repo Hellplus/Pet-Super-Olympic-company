@@ -60,6 +60,7 @@ export default defineConfig({
         { name: '收款登记', path: '/finance/revenue', component: './Finance/Revenue' },
         { name: '预算管理', path: '/finance/budget', component: './Finance/Budget' },
         { name: '报销/付款', path: '/finance/expense', component: './Finance/Expense' },
+        { name: '清算账单', path: '/finance/settlement', component: './Finance/Settlement' },
       ],
     },
     {
@@ -68,6 +69,7 @@ export default defineConfig({
       icon: 'ShopOutlined',
       routes: [
         { name: '品类保护', path: '/sponsorship/protected-category', component: './Sponsorship/ProtectedCategory' },
+        { name: '客户管理', path: '/sponsorship/client', component: './Sponsorship/Client' },
         { name: '赞助合同', path: '/sponsorship/contract', component: './Sponsorship/Contract' },
       ],
     },
@@ -77,7 +79,9 @@ export default defineConfig({
       icon: 'TrophyOutlined',
       routes: [
         { name: '赛事列表', path: '/event/list', component: './Event/EventList' },
+        { name: 'SOP模板', path: '/event/sop-template', component: './Event/SopTemplate' },
         { name: '内部公告', path: '/event/announcement', component: './Event/Announcement' },
+        { name: 'IP数字资产', path: '/event/digital-asset', component: './Event/DigitalAsset' },
       ],
     },
   ],

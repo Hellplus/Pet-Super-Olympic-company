@@ -16,6 +16,8 @@ import { BranchHrModule } from './modules/branch-hr/branch-hr.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { SponsorshipModule } from './modules/sponsorship/sponsorship.module';
 import { EventModule } from './modules/event/event.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
+import { UploadModule } from './modules/upload/upload.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -36,6 +38,7 @@ import redisConfig from './config/redis.config';
     AuthModule, UserModule, OrganizationModule, RoleModule,
     PermissionModule, AuditLogModule, SystemModule,
     BranchHrModule, FinanceModule, SponsorshipModule, EventModule,
+    DashboardModule, UploadModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
