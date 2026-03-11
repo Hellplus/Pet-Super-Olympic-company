@@ -71,6 +71,8 @@ export default defineConfig({
         { name: '品类保护', path: '/sponsorship/protected-category', component: './Sponsorship/ProtectedCategory' },
         { name: '客户管理', path: '/sponsorship/client', component: './Sponsorship/Client' },
         { name: '赞助合同', path: '/sponsorship/contract', component: './Sponsorship/Contract' },
+        { name: '权益交付', path: '/sponsorship/delivery', component: './Sponsorship/Delivery' },
+        { name: '结案报告', path: '/sponsorship/report', component: './Sponsorship/Report' },
       ],
     },
     {

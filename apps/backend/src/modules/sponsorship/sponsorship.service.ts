@@ -83,6 +83,46 @@ export class SponsorshipService {
   async getDeliveryTasks(contractId: string) {
     return this.taskRepo.find({ where: { contractId }, order: { createdAt: 'ASC' } });
   }
+  /** 生成赞助执行结案报告数据 */
+  async generateReportData(contractId: string) {
+    const contract = await this.contractRepo.findOne({
+      where: { id: contractId },
+      relations: ['client', 'organization'],
+    });
+    if (!contract) throw new NotFoundException('合同不存在');
+
+    const tasks = await this.taskRepo.find({ where: { contractId }, order: { createdAt: 'ASC' } });
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === 2).length;
+    const totalPhotos = tasks.reduce((sum, t) => sum + (t.evidencePhotos?.length || 0), 0);
+
+    return {
+      contract: {
+        contractNo: contract.contractNo,
+        clientName: (contract as any).client?.clientName || '',
+        orgName: (contract as any).organization?.name || '',
+        amount: contract.amount,
+        startDate: contract.startDate,
+        endDate: contract.endDate,
+      },
+      summary: {
+        totalTasks,
+        completedTasks,
+        completionRate: totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
+        totalPhotos,
+      },
+      tasks: tasks.map(t => ({
+        taskName: t.taskName,
+        taskType: t.taskType,
+        quantity: t.quantity,
+        completedQuantity: t.completedQuantity,
+        status: t.status,
+        evidenceCount: t.evidencePhotos?.length || 0,
+        evidencePhotos: t.evidencePhotos || [],
+      })),
+    };
+  }
+
   async submitEvidence(taskId: string, evidencePhotos: any[], completedQty: number) {
     const task = await this.taskRepo.findOneOrFail({ where: { id: taskId } });
     task.evidencePhotos = [...(task.evidencePhotos || []), ...evidencePhotos];

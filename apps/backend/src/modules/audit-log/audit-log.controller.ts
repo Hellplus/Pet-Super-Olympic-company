@@ -23,4 +23,10 @@ export class AuditLogController {
   findOne(@Param('id') id: string) {
     return this.auditLogService.findById(id);
   }
+
+  @Get(':id/detail')
+  @ApiOperation({ summary: '查看审计日志详情（含快照对比）' })
+  async getDetail(@Param('id') id: string) {
+    return this.auditLogService.findById(id);
+  }
 }

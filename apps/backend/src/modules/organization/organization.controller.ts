@@ -59,10 +59,10 @@ export class OrganizationController {
     return this.orgService.moveNode(dto, userId);
   }
 
-  @Post(':id/disable')
-  @ApiOperation({ summary: '一键熔断（停用分会）' })
+  @Post(':id/meltdown')
+  @ApiOperation({ summary: '一键熔断分会（冻结所有子组织+账号）' })
   @RequirePermissions('system:org:disable')
-  disable(@Param('id') id: string) {
-    return this.orgService.disableOrg(id);
+  async meltdown(@Param('id') id: string, @Body() body: { reason?: string }) {
+    return this.orgService.meltdownOrg(id, body.reason);
   }
 }

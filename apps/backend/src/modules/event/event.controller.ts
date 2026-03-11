@@ -78,4 +78,22 @@ export class EventController {
 
   @Get('digital-assets')
   findAllAssets() { return this.service.findAllAssets(); }
+
+  @Post('announcements/:id/mark-read')
+  @ApiOperation({ summary: '标记公告已读(增强)' })
+  async markRead(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.service.markAnnouncementRead(id, user.id);
+  }
+
+  @Get('announcements/:id/read-stats')
+  @ApiOperation({ summary: '获取公告已读/未读统计' })
+  async getReadStats(@Param('id') id: string) {
+    return this.service.getAnnouncementReadStats(id);
+  }
+
+  @Post('announcements/:id/remind')
+  @ApiOperation({ summary: '一键催读未读人员' })
+  async remind(@Param('id') id: string) {
+    return this.service.remindUnread(id);
+  }
 }

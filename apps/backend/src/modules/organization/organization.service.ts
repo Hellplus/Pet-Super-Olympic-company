@@ -121,8 +121,40 @@ export class OrganizationService {
     return descendants.map((d) => d.id);
   }
 
-  /** 一键撤销分会（熔断） */
-  async disableOrg(id: string) {
-    await this.orgRepo.update(id, { status: 0 });
+  /**
+   * 一键熔断分会 — PRD"一键撤销"
+   * 1. 禁用该分会组织节点
+   * 2. 冻结该分会下所有子组织
+   * 3. 冻结该分会下所有用户账号（踢下线+失效）
+   * 4. 封存历史数据（保留不删除）
+   */
+  async meltdownOrg(id: string, reason?: string): Promise<{ frozenOrgCount: number; frozenUserCount: number }> {
+    // 获取该组织及所有后代组织ID
+    const allOrgIds = await this.getDescendantIds(id);
+    if (allOrgIds.length === 0) {
+      throw new NotFoundException('组织不存在');
+    }
+
+    // 1. 批量冻结所有组织节点
+    const frozenOrgResult = await this.orgRepo
+      .createQueryBuilder()
+      .update(Organization)
+      .set({ status: 0, remark: reason ? `[熔断] ${reason}` : '[熔断] 总部一键撤销' })
+      .where('id IN (:...ids)', { ids: allOrgIds })
+      .execute();
+
+    // 2. 批量冻结所有用户账号
+    const frozenUserResult = await this.entityManager
+      .createQueryBuilder()
+      .update('sys_user')
+      .set({ status: 0 })
+      .where('organization_id IN (:...ids)', { ids: allOrgIds })
+      .andWhere('is_super_admin = false')
+      .execute();
+
+    return {
+      frozenOrgCount: frozenOrgResult.affected || 0,
+      frozenUserCount: frozenUserResult.affected || 0,
+    };
   }
 }

@@ -64,8 +64,14 @@ export class SponsorshipController {
   }
 
   @Post('delivery-tasks/:id/evidence')
-  @ApiOperation({ summary: '提交交付证据(带水印照片)' })
+  @ApiOperation({ summary: '提交交付证据(带水印照片+GPS元数据)' })
   submitEvidence(@Param('id') id: string, @Body() body: { photos: any[]; completedQty: number }) {
     return this.service.submitEvidence(id, body.photos, body.completedQty);
+  }
+
+  @Get('delivery/report/:contractId')
+  @ApiOperation({ summary: '生成赞助执行结案报告数据' })
+  async generateReport(@Param('contractId') contractId: string) {
+    return this.service.generateReportData(contractId);
   }
 }

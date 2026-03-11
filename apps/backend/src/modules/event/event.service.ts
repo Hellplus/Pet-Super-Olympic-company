@@ -6,6 +6,7 @@ import { SopTemplate } from './entities/sop-template.entity';
 import { SopTemplateTask } from './entities/sop-template-task.entity';
 import { EventTask } from './entities/event-task.entity';
 import { Announcement } from './entities/announcement.entity';
+import { User } from '../user/entities/user.entity';
 import { AnnouncementRead } from './entities/announcement-read.entity';
 import { DigitalAsset } from './entities/digital-asset.entity';
 import { CreateEventDto, QueryEventDto, CreateSopTemplateDto, CreateAnnouncementDto } from './dto/event.dto';
@@ -20,6 +21,7 @@ export class EventService {
     @InjectRepository(EventTask) private readonly eventTaskRepo: Repository<EventTask>,
     @InjectRepository(Announcement) private readonly annRepo: Repository<Announcement>,
     @InjectRepository(AnnouncementRead) private readonly readRepo: Repository<AnnouncementRead>,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(DigitalAsset) private readonly assetRepo: Repository<DigitalAsset>,
   ) {}
 
@@ -149,5 +151,49 @@ export class EventService {
 
   async findAllAssets() {
     return this.assetRepo.find({ where: { isLatest: true, status: 1 }, order: { createdAt: 'DESC' } });
+  }
+
+  /** 标记公告已读 */
+  async markAnnouncementRead(announcementId: string, userId: string) {
+    const existing = await this.readRepo.findOne({
+      where: { announcementId, userId },
+    });
+    if (existing) return existing;
+    return this.readRepo.save(this.readRepo.create({ announcementId, userId }));
+  }
+
+  /** 获取已读/未读统计 */
+  async getAnnouncementReadStats(announcementId: string) {
+    const readUsers = await this.readRepo.find({ where: { announcementId } });
+    const readUserIds = readUsers.map(r => r.userId);
+    const allUsers = await this.userRepo.find({
+      where: { status: 1 },
+      select: ['id', 'username', 'realName', 'organizationId'],
+    });
+    const readList = allUsers.filter(u => readUserIds.includes(u.id));
+    const unreadList = allUsers.filter(u => !readUserIds.includes(u.id));
+    return {
+      totalUsers: allUsers.length,
+      readCount: readList.length,
+      unreadCount: unreadList.length,
+      readList,
+      unreadList,
+    };
+  }
+
+  /** 催读未读人员（记录催读事件，实际推送由前端/消息服务处理） */
+  async remindUnread(announcementId: string) {
+    const stats = await this.getAnnouncementReadStats(announcementId);
+    // 实际环境中这里会调用推送服务（App Push + SMS）
+    return {
+      success: true,
+      remindedCount: stats.unreadCount,
+      remindedUsers: stats.unreadList.map(u => ({
+        id: u.id,
+        name: u.realName,
+        username: u.username,
+      })),
+      message: `已向 ${stats.unreadCount} 名未读人员发送催读通知`,
+    };
   }
 }

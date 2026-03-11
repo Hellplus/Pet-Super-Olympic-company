@@ -9,6 +9,8 @@ import { ExpertAssignment } from './entities/expert-assignment.entity';
 import { CreateBranchApplicationDto, ApproveBranchDto, QueryBranchApplicationDto } from './dto/branch-application.dto';
 import { CreateExpertDto, UpdateExpertDto, QueryExpertDto } from './dto/expert.dto';
 import { paginate } from '../../common/utils/pagination.util';
+import { OrganizationService } from '../organization/organization.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class BranchHrService {
@@ -18,6 +20,8 @@ export class BranchHrService {
     @InjectRepository(Expert) private readonly expertRepo: Repository<Expert>,
     @InjectRepository(ExpertCertificate) private readonly certRepo: Repository<ExpertCertificate>,
     @InjectRepository(ExpertAssignment) private readonly assignRepo: Repository<ExpertAssignment>,
+    private readonly orgService: OrganizationService,
+    private readonly userService: UserService,
   ) {}
 
   // ====== 分会入驻申请 ======
@@ -59,7 +63,10 @@ export class BranchHrService {
 
     if (dto.result === 1) {
       app.status = step.next;
-      // 如果终审通过,实际业务中应调用 OrganizationService 自动创建分会节点
+      // 终审通过 → 自动创建分会组织节点 + 初始会长账号
+      if (step.next === 3) {
+        await this.autoProvisionBranch(app, approverId);
+      }
     } else {
       app.status = 9;
       app.rejectReason = dto.rejectReason || dto.opinion || '';
@@ -123,6 +130,46 @@ export class BranchHrService {
 
   async createAssignment(data: Partial<ExpertAssignment>) {
     return this.assignRepo.save(this.assignRepo.create(data));
+  }
+
+  /**
+   * 终审通过后自动建档：创建分会组织节点 + 下发初始会长账号
+   */
+  private async autoProvisionBranch(app: BranchApplication, approverId: string) {
+    try {
+      // 1. 查找总部根节点作为父组织
+      const trees = await this.orgService.getTree();
+      const rootOrg = trees?.[0];
+      if (!rootOrg) return;
+
+      const branchCode = 'BR_' + Date.now().toString(36).toUpperCase();
+
+      // 2. 自动创建分会组织节点
+      const newOrg = await this.orgService.create({
+        name: app.branchName,
+        code: branchCode,
+        parentId: rootOrg.id,
+        orgType: 2, // 2=分会
+        leader: app.applicantName,
+        phone: app.applicantPhone,
+        address: app.city,
+      }, approverId);
+
+      // 3. 自动创建初始会长账号
+      const initialPassword = 'ipoc@' + branchCode.slice(-6);
+      await this.userService.create({
+        username: branchCode.toLowerCase(),
+        password: initialPassword,
+        realName: app.applicantName,
+        phone: app.applicantPhone,
+        organizationId: newOrg.id,
+      }, approverId);
+
+      // 4. 回写分会ID到申请记录
+      app.remark = `自动建档成功 | 组织ID: ${newOrg.id} | 初始账号: ${branchCode.toLowerCase()} | 初始密码: ${initialPassword}`;
+    } catch (e) {
+      app.remark = `自动建档失败: ${e.message}`;
+    }
   }
 
   async rateAssignment(id: string, rating: number, reviewComment: string) {

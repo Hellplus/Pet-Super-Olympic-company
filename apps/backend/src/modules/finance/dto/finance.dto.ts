@@ -26,6 +26,19 @@ export class CreateEventBudgetDto {
   @ApiProperty() items: { subjectName: string; budgetAmount: number }[];
 }
 
+export class BudgetCheckDto {
+  @ApiProperty({ description: '预算包ID' })
+  @IsUUID()
+  budgetId: string;
+
+  @ApiProperty({ description: '报销金额' })
+  amount: number;
+
+  @ApiPropertyOptional({ description: '科目名称' })
+  @IsOptional() @IsString()
+  subjectName?: string;
+}
+
 export class CreateExpenseDto {
   @ApiProperty() @IsUUID() orgId: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() budgetId?: string;
@@ -34,6 +47,14 @@ export class CreateExpenseDto {
   @ApiProperty() @IsNumber() amount: number;
   @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
   @ApiPropertyOptional() @IsOptional() attachments?: any;
+
+  @ApiPropertyOptional({ description: '超预算特批标记' })
+  @IsOptional()
+  forceOverBudget?: boolean;
+
+  @ApiPropertyOptional({ description: '科目名称' })
+  @IsOptional() @IsString()
+  subjectName?: string;
 }
 
 export class QueryExpenseDto extends PaginationDto {

@@ -97,19 +97,42 @@ export class FinanceService {
 
   // ====== 报销/付款单 ======
   async createExpense(dto: CreateExpenseDto, userId: string, userName: string) {
-    // 超预算检测
+    // === PRD "超支硬拦截" ===
     let isOverBudget = false;
     if (dto.budgetId) {
       const budget = await this.budgetRepo.findOneOrFail({ where: { id: dto.budgetId } });
       if (budget.status !== 1) throw new BadRequestException('该预算包未审批通过');
+
+      // 检查总预算余额
       if (dto.amount > Number(budget.remainingAmount)) {
         isOverBudget = true;
+      }
+
+      // 检查单科目预算（如有指定科目）
+      if (dto.subjectName) {
+        const item = await this.budgetItemRepo.findOne({
+          where: { budgetId: dto.budgetId, subjectName: dto.subjectName },
+        });
+        if (item) {
+          const subjectUsed = Number(item.usedAmount || 0);
+          if (subjectUsed + dto.amount > Number(item.budgetAmount)) {
+            isOverBudget = true;
+          }
+        }
+      }
+
+      // 硬拦截：超预算直接拒绝，必须走超预算特批
+      if (isOverBudget && !dto.forceOverBudget) {
+        throw new BadRequestException(
+          '超预算拦截：该笔报销将导致预算超支！请发起《超预算特批申请》（勾选"超预算特批"选项）。'
+        );
       }
     }
     const no = 'EXP' + Date.now().toString(36).toUpperCase();
     return this.expenseRepo.save(this.expenseRepo.create({
       ...dto, expenseNo: no, applicantId: userId, applicantName: userName,
-      isOverBudget, status: isOverBudget ? 0 : 1, createdBy: userId,
+      isOverBudget, status: isOverBudget ? 10 : 1, createdBy: userId,
+      // status 10 = 超预算特批待审 (需要总部审批)
     }));
   }
 

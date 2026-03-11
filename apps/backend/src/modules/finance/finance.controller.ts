@@ -77,4 +77,21 @@ export class FinanceController {
 
   @Post('approval-configs')
   upsertApprovalConfig(@Body() data: any) { return this.service.upsertApprovalConfig(data); }
+
+  @Post('budget-check')
+  @ApiOperation({ summary: '预算余额预检（前端实时校验用）' })
+  async budgetCheck(@Body() dto: any) {
+    if (!dto.budgetId) return { ok: true, message: '未关联预算' };
+    const budget = await this.service.findBudgetById(dto.budgetId);
+    const remaining = Number(budget.remainingAmount || 0);
+    const amount = Number(dto.amount || 0);
+    const isOver = amount > remaining;
+    return {
+      ok: !isOver,
+      remaining,
+      amount,
+      overAmount: isOver ? amount - remaining : 0,
+      message: isOver ? `超预算 ¥${(amount - remaining).toFixed(2)}，需发起超预算特批` : '预算充足',
+    };
+  }
 }
