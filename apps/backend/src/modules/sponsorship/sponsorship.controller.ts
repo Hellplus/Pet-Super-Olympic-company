@@ -1,14 +1,19 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Body, Param, Query, Res, Header } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { SponsorshipService } from './sponsorship.service';
+import { ReportService } from './report.service';
 import { CreateProtectedCategoryDto, CreateSponsorClientDto, CreateSponsorContractDto, QueryContractDto } from './dto/sponsorship.dto';
 import { CurrentUser } from '../../common/decorators';
+import type { Response } from 'express';
 
 @ApiTags('招商合规')
 @ApiBearerAuth()
 @Controller('sponsorship')
 export class SponsorshipController {
-  constructor(private readonly service: SponsorshipService) {}
+  constructor(
+    private readonly service: SponsorshipService,
+    private readonly reportService: ReportService,
+  ) {}
 
   // --- 品类保护 ---
   @Post('protected-categories')
@@ -73,5 +78,13 @@ export class SponsorshipController {
   @ApiOperation({ summary: '生成赞助执行结案报告数据' })
   async generateReport(@Param('contractId') contractId: string) {
     return this.service.generateReportData(contractId);
+  }
+
+  @Get('delivery/report/:contractId/html')
+  @ApiOperation({ summary: '生成结案报告HTML(可转PDF打印)' })
+  async generateReportHtml(@Param('contractId') contractId: string, @Res() res: Response) {
+    const html = await this.reportService.generateReportHtml(contractId);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
   }
 }

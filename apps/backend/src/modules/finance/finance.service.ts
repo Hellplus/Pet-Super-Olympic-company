@@ -147,9 +147,22 @@ export class FinanceService {
 
   async approveExpense(id: string, approve: boolean) {
     const e = await this.expenseRepo.findOneOrFail({ where: { id } });
-    e.status = approve ? 3 : 4;
+
+    // PRD: 金额条件审批路由 - 根据审批配置判定是否需要加签总部
+    if (approve) {
+      const route = await this.getApprovalRoute('EXPENSE', Number(e.amount));
+      if (route && route.approvalLevel === 'HQ' && e.status === 1) {
+        // 金额>=阈值,自动加签总部,状态变为2(审批中-待总部复核)
+        e.status = 2;
+        return this.expenseRepo.save(e);
+      }
+      e.status = 3; // 直接通过
+    } else {
+      e.status = 4; // 驳回
+    }
+
     // 如果通过且关联预算,扣减预算余额
-    if (approve && e.budgetId) {
+    if (e.status === 3 && e.budgetId) {
       await this.budgetRepo.createQueryBuilder().update(EventBudget)
         .set({ usedAmount: () => `used_amount + ${Number(e.amount)}`, remainingAmount: () => `remaining_amount - ${Number(e.amount)}` })
         .where('id = :id', { id: e.budgetId }).execute();
@@ -174,5 +187,54 @@ export class FinanceService {
 
   async upsertApprovalConfig(data: Partial<ApprovalConfig>) {
     return this.approvalConfigRepo.save(this.approvalConfigRepo.create(data));
+  }
+
+  /** PRD: "基于金额门槛的单据流转配置" - 查找匹配的审批路由 */
+  async getApprovalRoute(bizType: string, amount: number) {
+    const configs = await this.approvalConfigRepo.find({
+      where: { bizType, status: 1 },
+      order: { minAmount: 'ASC' },
+    });
+    for (const c of configs) {
+      const min = Number(c.minAmount);
+      const max = c.maxAmount ? Number(c.maxAmount) : Infinity;
+      if (amount >= min && amount < max) {
+        return {
+          configId: c.id,
+          bizType: c.bizType,
+          approvalLevel: (c.approvalLevels as any)?.[0]?.level || 'LOCAL',
+          approvalLevels: c.approvalLevels,
+          description: `金额 ¥${amount} 匹配规则: ¥${min}${max === Infinity ? '+' : '~¥' + max}`,
+        };
+      }
+    }
+    return { approvalLevel: 'LOCAL', description: '无匹配规则,默认地方终审' };
+  }
+
+  /** PRD: 清算催缴 - 批量生成所有分会的清算账单 */
+  async batchGenerateSettlement(period: string) {
+    const revenues = await this.revenueRepo.createQueryBuilder('r')
+      .select('r.org_id', 'orgId')
+      .addSelect('COUNT(*)', 'count')
+      .addSelect('SUM(r.amount)', 'totalRevenue')
+      .where('r.is_settled = false AND r.status = 1')
+      .groupBy('r.org_id')
+      .getRawMany();
+
+    const bills = [];
+    for (const row of revenues) {
+      if (Number(row.totalRevenue) > 0) {
+        const bill = await this.generateSettlementBill(row.orgId, period);
+        bills.push(bill);
+      }
+    }
+    return { generatedCount: bills.length, bills };
+  }
+
+  /** 标记清算账单为已催缴 */
+  async markBillReminded(billId: string) {
+    const bill = await this.billRepo.findOneOrFail({ where: { id: billId } });
+    bill.status = 2; // 2=已催缴
+    return this.billRepo.save(bill);
   }
 }

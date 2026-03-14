@@ -11,6 +11,7 @@ import { getOverview } from '../../services/dashboard';
 import HqCommanderDashboard from './HqCommander';
 import HqFinanceDashboard from './HqFinance';
 import BranchDashboard from './Branch';
+import AnnouncementPopup from '../../components/AnnouncementPopup';
 
 const { Title, Paragraph } = Typography;
 
@@ -30,6 +31,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <PageContainer>
+      <AnnouncementPopup />
       <Spin spinning={loading}>
         {/* 全局概览卡片 */}
         <Row gutter={[16, 16]}>

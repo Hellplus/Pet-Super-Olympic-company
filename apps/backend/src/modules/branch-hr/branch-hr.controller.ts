@@ -101,4 +101,24 @@ export class BranchHrController {
   rateAssignment(@Param('id') id: string, @Body() body: { rating: number; reviewComment: string }) {
     return this.service.rateAssignment(id, body.rating, body.reviewComment);
   }
+
+  // --- 证书到期预警 ---
+  @Get('cert-expiry-warnings')
+  @ApiOperation({ summary: '专家证书到期预警(默认30天内)' })
+  getCertExpiryWarnings(@Query('daysAhead') daysAhead?: string) {
+    return this.service.getCertExpiryWarnings(daysAhead ? Number(daysAhead) : 30);
+  }
+
+  // --- 跨区调派搜索 ---
+  @Get('experts/dispatch-search')
+  @ApiOperation({ summary: '跨区调派专家搜索(全国范围)' })
+  searchForDispatch(
+    @Query('expertType') expertType?: string,
+    @Query('starLevel') starLevel?: string,
+    @Query('keyword') keyword?: string,
+  ) {
+    return this.service.searchExpertsForDispatch({
+      expertType, starLevel: starLevel ? Number(starLevel) : undefined, keyword,
+    });
+  }
 }

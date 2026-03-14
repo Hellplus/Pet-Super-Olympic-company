@@ -94,4 +94,22 @@ export class FinanceController {
       message: isOver ? `超预算 ¥${(amount - remaining).toFixed(2)}，需发起超预算特批` : '预算充足',
     };
   }
+
+  @Get('approval-route')
+  @ApiOperation({ summary: '查询审批路由(根据业务类型+金额)' })
+  getApprovalRoute(@Query('bizType') bizType: string, @Query('amount') amount: string) {
+    return this.service.getApprovalRoute(bizType, Number(amount));
+  }
+
+  @Post('settlements/batch-generate')
+  @ApiOperation({ summary: '批量生成所有分会清算账单' })
+  batchGenerateSettlement(@Body() body: { period: string }) {
+    return this.service.batchGenerateSettlement(body.period);
+  }
+
+  @Post('settlements/:id/remind')
+  @ApiOperation({ summary: '标记清算账单已催缴' })
+  markBillReminded(@Param('id') id: string) {
+    return this.service.markBillReminded(id);
+  }
 }

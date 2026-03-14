@@ -6,11 +6,12 @@ import { SponsorContract } from './entities/sponsor-contract.entity';
 import { DeliveryTask } from './entities/delivery-task.entity';
 import { SponsorshipService } from './sponsorship.service';
 import { SponsorshipController } from './sponsorship.controller';
+import { ReportService } from './report.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([ProtectedCategory, SponsorClient, SponsorContract, DeliveryTask])],
   controllers: [SponsorshipController],
-  providers: [SponsorshipService],
+  providers: [SponsorshipService, ReportService],
   exports: [SponsorshipService],
 })
 export class SponsorshipModule {}

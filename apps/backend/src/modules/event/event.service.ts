@@ -184,7 +184,6 @@ export class EventService {
   /** 催读未读人员（记录催读事件，实际推送由前端/消息服务处理） */
   async remindUnread(announcementId: string) {
     const stats = await this.getAnnouncementReadStats(announcementId);
-    // 实际环境中这里会调用推送服务（App Push + SMS）
     return {
       success: true,
       remindedCount: stats.unreadCount,
@@ -195,5 +194,52 @@ export class EventService {
       })),
       message: `已向 ${stats.unreadCount} 名未读人员发送催读通知`,
     };
+  }
+
+  /** PRD: "全员App端强弹窗提醒" - 获取当前用户的未读公告(用于登录后弹窗) */
+  async getMyUnreadAnnouncements(userId: string) {
+    const published = await this.annRepo.find({
+      where: { status: 1 },
+      order: { publishedAt: 'DESC' },
+    });
+    const readRecords = await this.readRepo.find({ where: { userId } });
+    const readIds = new Set(readRecords.map(r => r.announcementId));
+    const unread = published.filter(a => !readIds.has(a.id));
+    return {
+      unreadCount: unread.length,
+      announcements: unread.map(a => ({
+        id: a.id,
+        title: a.title,
+        content: a.content,
+        announcementType: a.announcementType,
+        publishedAt: a.publishedAt,
+        publisherName: a.publisherName,
+      })),
+    };
+  }
+
+  /** 获取全国赛事SOP进度总览(红黄绿灯矩阵) */
+  async getSopProgressMatrix() {
+    const events = await this.eventRepo.find({
+      where: { status: 0 }, // 筹备中的赛事
+      relations: ['organization'],
+      order: { eventDate: 'ASC' },
+    });
+    const matrix = [];
+    for (const evt of events) {
+      const progress = await this.getEventProgress(evt.id);
+      let light: 'green' | 'yellow' | 'red' = 'green';
+      if (progress.overdue > 0) light = 'red';
+      else if (progress.progress < 50) light = 'yellow';
+      matrix.push({
+        eventId: evt.id,
+        eventName: evt.eventName,
+        eventDate: evt.eventDate,
+        orgName: evt.organization?.name,
+        ...progress,
+        light,
+      });
+    }
+    return matrix;
   }
 }

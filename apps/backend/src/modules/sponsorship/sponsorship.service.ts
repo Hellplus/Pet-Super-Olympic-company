@@ -55,6 +55,18 @@ export class SponsorshipService {
 
   // ====== 合同 ======
   async createContract(dto: CreateSponsorContractDto, userId: string) {
+    // PRD品类排他拦截：合同创建时，查客户品类，若受保护则拒绝
+    if (dto.clientId) {
+      const client = await this.clientRepo.findOne({ where: { id: dto.clientId } });
+      if (client?.category) {
+        const check = await this.checkCategoryConflict(client.category);
+        if (check.isProtected) {
+          throw new BadRequestException(
+            `品类排他拦截：该客户所属品类"${client.category}"已被独家保护（品牌: ${check.protectedInfo?.brandName || ''}），禁止签约！`
+          );
+        }
+      }
+    }
     const no = 'SC' + Date.now().toString(36).toUpperCase();
     return this.contractRepo.save(this.contractRepo.create({ ...dto, contractNo: no, createdBy: userId }));
   }

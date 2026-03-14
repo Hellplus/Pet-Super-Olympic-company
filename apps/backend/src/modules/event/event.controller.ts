@@ -96,4 +96,18 @@ export class EventController {
   async remind(@Param('id') id: string) {
     return this.service.remindUnread(id);
   }
+
+  // --- 未读公告(登录弹窗) ---
+  @Get('my-unread-announcements')
+  @ApiOperation({ summary: '获取我的未读公告(登录弹窗用)' })
+  async getMyUnread(@CurrentUser('id') userId: string) {
+    return this.service.getMyUnreadAnnouncements(userId);
+  }
+
+  // --- SOP进度矩阵 ---
+  @Get('sop-progress-matrix')
+  @ApiOperation({ summary: '全国赛事SOP红黄绿灯进度矩阵' })
+  async getSopMatrix() {
+    return this.service.getSopProgressMatrix();
+  }
 }

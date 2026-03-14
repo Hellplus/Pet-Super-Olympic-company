@@ -179,4 +179,59 @@ export class BranchHrService {
     a.status = 2;
     return this.assignRepo.save(a);
   }
+
+  // ====== 专家资质到期预警 ======
+  /** PRD: "资质证书(带到期预警)" - 查询即将到期和已过期的证书 */
+  async getCertExpiryWarnings(daysAhead = 30) {
+    const now = new Date();
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + daysAhead);
+
+    const certs = await this.certRepo.createQueryBuilder('c')
+      .leftJoinAndSelect('c.expert', 'expert')
+      .where('c.expiry_date IS NOT NULL')
+      .andWhere('c.expiry_date <= :futureDate', { futureDate: futureDate.toISOString().slice(0, 10) })
+      .andWhere('c.deleted_at IS NULL')
+      .orderBy('c.expiry_date', 'ASC')
+      .getMany();
+
+    const expired = certs.filter(c => new Date(c.expiryDate) < now);
+    const expiringSoon = certs.filter(c => new Date(c.expiryDate) >= now);
+
+    // 自动标记已过期
+    for (const c of expired) {
+      if (!c.isExpired) {
+        await this.certRepo.update(c.id, { isExpired: true });
+      }
+    }
+
+    return {
+      daysAhead,
+      expiredCount: expired.length,
+      expiringSoonCount: expiringSoon.length,
+      expired: expired.map(c => ({
+        certId: c.id, certName: c.certName, certNo: c.certNo,
+        expertId: c.expertId, expertName: c.expert?.name,
+        expiryDate: c.expiryDate, issuingAuthority: c.issuingAuthority,
+      })),
+      expiringSoon: expiringSoon.map(c => ({
+        certId: c.id, certName: c.certName, certNo: c.certNo,
+        expertId: c.expertId, expertName: c.expert?.name,
+        expiryDate: c.expiryDate, issuingAuthority: c.issuingAuthority,
+        daysRemaining: Math.ceil((new Date(c.expiryDate).getTime() - now.getTime()) / 86400000),
+      })),
+    };
+  }
+
+  /** 跨区调派搜索 - PRD: "支持全国分会跨区调派检索" */
+  async searchExpertsForDispatch(query: { expertType?: string; starLevel?: number; keyword?: string }) {
+    const qb = this.expertRepo.createQueryBuilder('e')
+      .where('e.status = 1')
+      .andWhere('e.deleted_at IS NULL');
+    if (query.expertType) qb.andWhere('e.expert_type = :t', { t: query.expertType });
+    if (query.starLevel) qb.andWhere('e.star_level >= :s', { s: query.starLevel });
+    if (query.keyword) qb.andWhere('(e.name LIKE :k OR e.specialties LIKE :k)', { k: `%${query.keyword}%` });
+    qb.orderBy('e.star_level', 'DESC').addOrderBy('e.total_assignments', 'DESC');
+    return qb.getMany();
+  }
 }

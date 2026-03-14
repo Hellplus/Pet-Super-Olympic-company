@@ -7,6 +7,7 @@ import { ExpertCertificate } from './entities/expert-certificate.entity';
 import { ExpertAssignment } from './entities/expert-assignment.entity';
 import { BranchHrService } from './branch-hr.service';
 import { BranchHrController } from './branch-hr.controller';
+import { BranchHrPublicController } from './branch-hr-public.controller';
 import { OrganizationModule } from '../organization/organization.module';
 import { UserModule } from '../user/user.module';
 
@@ -16,7 +17,7 @@ import { UserModule } from '../user/user.module';
     forwardRef(() => UserModule),
     TypeOrmModule.forFeature([BranchApplication, ApprovalRecord, Expert, ExpertCertificate, ExpertAssignment]),
   ],
-  controllers: [BranchHrController],
+  controllers: [BranchHrController, BranchHrPublicController],
   providers: [BranchHrService],
   exports: [BranchHrService],
 })

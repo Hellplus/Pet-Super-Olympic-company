@@ -18,6 +18,7 @@ export default defineConfig({
   },
   routes: [
     { path: '/login', component: './Login', layout: false },
+    { path: '/public/branch-apply', component: './Public/BranchApply', layout: false },
     {
       path: '/',
       redirect: '/dashboard',
@@ -50,6 +51,7 @@ export default defineConfig({
       routes: [
         { name: '入驻申请', path: '/branch-hr/application', component: './BranchHr/Application' },
         { name: '专业人才库', path: '/branch-hr/expert', component: './BranchHr/Expert' },
+        { name: '证书预警', path: '/branch-hr/cert-warning', component: './BranchHr/CertWarning' },
       ],
     },
     {
@@ -61,6 +63,7 @@ export default defineConfig({
         { name: '预算管理', path: '/finance/budget', component: './Finance/Budget' },
         { name: '报销/付款', path: '/finance/expense', component: './Finance/Expense' },
         { name: '清算账单', path: '/finance/settlement', component: './Finance/Settlement' },
+        { name: '审批路由', path: '/finance/approval-config', component: './Finance/ApprovalConfig' },
       ],
     },
     {
@@ -83,6 +86,7 @@ export default defineConfig({
         { name: '赛事列表', path: '/event/list', component: './Event/EventList' },
         { name: 'SOP模板', path: '/event/sop-template', component: './Event/SopTemplate' },
         { name: '内部公告', path: '/event/announcement', component: './Event/Announcement' },
+        { name: 'SOP进度矩阵', path: '/event/sop-progress', component: './Event/SopProgress' },
         { name: 'IP数字资产', path: '/event/digital-asset', component: './Event/DigitalAsset' },
       ],
     },
