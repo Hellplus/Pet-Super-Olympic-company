@@ -44,21 +44,21 @@ const ClientPage: React.FC = () => {
   };
 
   const columns: ProColumns[] = [
-    { title: '客户全称', dataIndex: 'clientName', ellipsis: true,
+    { title: '客户全称', dataIndex: 'companyName', ellipsis: true,
       render: (_, record: any) => (
         <a onClick={() => { setCurrentClient(record); setDetailVisible(true); }}>
-          {record.clientName}
+          {record.companyName}
         </a>
       ),
     },
-    { title: '联系人', dataIndex: 'contactName', width: 100, search: false },
+    { title: '联系人', dataIndex: 'contactPerson', width: 100, search: false },
     { title: '联系电话', dataIndex: 'contactPhone', width: 130, search: false,
       render: (v: any) => v ? <><PhoneOutlined /> {v}</> : '-' },
     { title: '邮箱', dataIndex: 'email', width: 160, search: false, ellipsis: true,
       render: (v: any) => v ? <><MailOutlined /> {v}</> : '-' },
-    { title: '行业', dataIndex: 'industry', width: 100, search: false,
+    { title: '行业/品类', dataIndex: 'category', width: 100, search: false,
       render: (v: any) => v ? <Tag>{v}</Tag> : '-' },
-    { title: '意向金额', dataIndex: 'intentAmount', width: 130, search: false,
+    { title: '意向金额', dataIndex: 'intendedAmount', width: 130, search: false,
       sorter: true,
       render: (v: any) => {
         const amount = Number(v || 0);
@@ -67,9 +67,9 @@ const ClientPage: React.FC = () => {
         </Text>;
       },
     },
-    { title: '引荐总部', dataIndex: 'referToHq', width: 100,
+    { title: '引荐总部', dataIndex: 'isReferredToHq', width: 100,
       valueEnum: { true: { text: '已引荐' }, false: { text: '未引荐' } },
-      render: (_, record: any) => record.referToHq
+      render: (_, record: any) => record.isReferredToHq
         ? <Badge status="success" text={<><StarFilled style={{ color: '#faad14' }} /> 已引荐</>} />
         : <Badge status="default" text="未引荐" />,
     },
@@ -86,7 +86,7 @@ const ClientPage: React.FC = () => {
             <Button type="text" size="small" icon={<EditOutlined />}
               onClick={() => setEditingClient(record)} />
           </Tooltip>
-          {!record.referToHq && (
+          {!record.isReferredToHq && (
             <Popconfirm title="确认将此客户引荐至总部？" onConfirm={() => handleRefer(record.id)}>
               <Tooltip title="引荐总部">
                 <Button type="text" size="small" icon={<StarOutlined style={{ color: '#faad14' }} />} />
@@ -116,12 +116,12 @@ const ClientPage: React.FC = () => {
             const arr = Array.isArray(list) ? list : (list?.list || []);
             // 前端搜索过滤
             let filtered = arr;
-            if (params.clientName) {
-              filtered = filtered.filter((c: any) => c.clientName?.includes(params.clientName));
+            if (params.companyName) {
+              filtered = filtered.filter((c: any) => c.companyName?.includes(params.companyName));
             }
-            if (params.referToHq !== undefined && params.referToHq !== '') {
-              const isReferred = params.referToHq === 'true' || params.referToHq === true;
-              filtered = filtered.filter((c: any) => !!c.referToHq === isReferred);
+            if (params.isReferredToHq !== undefined && params.isReferredToHq !== '') {
+              const isReferred = params.isReferredToHq === 'true' || params.isReferredToHq === true;
+              filtered = filtered.filter((c: any) => !!c.isReferredToHq === isReferred);
             }
             return { data: filtered, success: true, total: filtered.length };
           } catch {
@@ -143,16 +143,16 @@ const ClientPage: React.FC = () => {
             }}
             modalProps={{ destroyOnClose: true }}
           >
-            <ProFormText name="clientName" label="客户全称" rules={[{ required: true, message: '请输入客户名称' }]}
+            <ProFormText name="companyName" label="客户全称" rules={[{ required: true, message: '请输入客户名称' }]}
               placeholder="公司/品牌全称" />
-            <ProFormText name="contactName" label="联系人" placeholder="主要对接人" />
+            <ProFormText name="contactPerson" label="联系人" placeholder="主要对接人" />
             <ProFormText name="contactPhone" label="联系电话" placeholder="手机或固话" />
             <ProFormText name="email" label="电子邮箱" placeholder="企业邮箱" />
-            <ProFormText name="industry" label="所属行业" placeholder="如：宠物食品、宠物医疗" />
-            <ProFormDigit name="intentAmount" label="意向金额(元)" min={0} fieldProps={{ precision: 2 }}
+            <ProFormText name="category" label="所属品类" placeholder="如：宠物食品、宠物医疗" />
+            <ProFormDigit name="intendedAmount" label="意向金额(元)" min={0} fieldProps={{ precision: 2 }}
               placeholder="初步意向赞助金额" />
             <ProFormTextArea name="remark" label="备注" placeholder="特殊需求或跟进记录" />
-            <ProFormSwitch name="referToHq" label="引荐给总部" tooltip="开启后总部可见此客户信息" />
+            <ProFormSwitch name="isReferredToHq" label="引荐给总部" tooltip="开启后总部可见此客户信息" />
           </ModalForm>,
         ]}
       />
@@ -166,14 +166,14 @@ const ClientPage: React.FC = () => {
         onFinish={handleUpdate}
         modalProps={{ destroyOnClose: true }}
       >
-        <ProFormText name="clientName" label="客户全称" rules={[{ required: true }]} />
-        <ProFormText name="contactName" label="联系人" />
+        <ProFormText name="companyName" label="客户全称" rules={[{ required: true }]} />
+        <ProFormText name="contactPerson" label="联系人" />
         <ProFormText name="contactPhone" label="联系电话" />
         <ProFormText name="email" label="电子邮箱" />
-        <ProFormText name="industry" label="所属行业" />
-        <ProFormDigit name="intentAmount" label="意向金额(元)" min={0} fieldProps={{ precision: 2 }} />
+        <ProFormText name="category" label="所属品类" />
+        <ProFormDigit name="intendedAmount" label="意向金额(元)" min={0} fieldProps={{ precision: 2 }} />
         <ProFormTextArea name="remark" label="备注" />
-        <ProFormSwitch name="referToHq" label="引荐给总部" />
+        <ProFormSwitch name="isReferredToHq" label="引荐给总部" />
       </ModalForm>
 
       {/* 客户详情弹窗 */}
@@ -186,14 +186,14 @@ const ClientPage: React.FC = () => {
       >
         {currentClient && (
           <Descriptions bordered column={2} size="small">
-            <Descriptions.Item label="客户全称" span={2}>{currentClient.clientName}</Descriptions.Item>
-            <Descriptions.Item label="联系人">{currentClient.contactName || '-'}</Descriptions.Item>
+            <Descriptions.Item label="客户全称" span={2}>{currentClient.companyName}</Descriptions.Item>
+            <Descriptions.Item label="联系人">{currentClient.contactPerson || '-'}</Descriptions.Item>
             <Descriptions.Item label="联系电话">{currentClient.contactPhone || '-'}</Descriptions.Item>
             <Descriptions.Item label="电子邮箱">{currentClient.email || '-'}</Descriptions.Item>
-            <Descriptions.Item label="所属行业">{currentClient.industry || '-'}</Descriptions.Item>
-            <Descriptions.Item label="意向金额">¥{Number(currentClient.intentAmount || 0).toLocaleString()}</Descriptions.Item>
+            <Descriptions.Item label="所属品类">{currentClient.category || '-'}</Descriptions.Item>
+            <Descriptions.Item label="意向金额">¥{Number(currentClient.intendedAmount || 0).toLocaleString()}</Descriptions.Item>
             <Descriptions.Item label="引荐总部">
-              {currentClient.referToHq ? <Tag icon={<StarFilled />} color="gold">已引荐</Tag> : <Tag>未引荐</Tag>}
+              {currentClient.isReferredToHq ? <Tag icon={<StarFilled />} color="gold">已引荐</Tag> : <Tag>未引荐</Tag>}
             </Descriptions.Item>
             <Descriptions.Item label="备注" span={2}>{currentClient.remark || '-'}</Descriptions.Item>
             <Descriptions.Item label="录入时间" span={2}>{currentClient.createdAt}</Descriptions.Item>

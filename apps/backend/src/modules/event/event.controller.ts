@@ -32,7 +32,7 @@ export class EventController {
 
   @Put('sop-templates/:id')
   @ApiOperation({ summary: '更新SOP模板' })
-  updateTemplate(@Param('id') id: string, @Body() body: { name?: string; description?: string }) {
+  updateTemplate(@Param('id') id: string, @Body() body: { templateName?: string; name?: string; eventType?: string; description?: string }) {
     return this.service.updateSopTemplate(id, body);
   }
 

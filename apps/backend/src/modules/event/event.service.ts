@@ -82,10 +82,11 @@ export class EventService {
     return { ...t, tasks };
   }
 
-  async updateSopTemplate(id: string, data: { name?: string; description?: string }) {
+  async updateSopTemplate(id: string, data: { templateName?: string; name?: string; eventType?: string; description?: string }) {
     const t = await this.sopRepo.findOne({ where: { id } });
     if (!t) throw new NotFoundException('模板不存在');
-    if (data.name) t.templateName = data.name;
+    if (data.templateName || data.name) t.templateName = (data.templateName || data.name)!;
+    if (data.eventType !== undefined) t.eventType = data.eventType;
     if (data.description !== undefined) t.description = data.description;
     return this.sopRepo.save(t);
   }

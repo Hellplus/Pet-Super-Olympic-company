@@ -108,7 +108,7 @@ const SopTemplatePage: React.FC = () => {
   };
 
   const columns: ProColumns[] = [
-    { title: '模板名称', dataIndex: 'name', ellipsis: true },
+    { title: '模板名称', dataIndex: 'templateName', ellipsis: true },
     { title: '描述', dataIndex: 'description', ellipsis: true, search: false },
     { title: '任务数', dataIndex: 'taskCount', width: 80, search: false,
       render: (v: any) => <Tag color="blue">{v || 0} 项</Tag> },
@@ -191,8 +191,9 @@ const SopTemplatePage: React.FC = () => {
             }}
             modalProps={{ destroyOnClose: true }}
           >
-            <ProFormText name="name" label="模板名称" rules={[{ required: true, message: '请输入模板名称' }]}
+            <ProFormText name="templateName" label="模板名称" rules={[{ required: true, message: '请输入模板名称' }]}
               placeholder="如：标准犬类竞技赛 SOP" />
+            <ProFormText name="eventType" label="适用赛事类型" placeholder="如：竞技赛、表演赛" />
             <ProFormTextArea name="description" label="模板描述"
               placeholder="描述此模板适用的赛事类型、规模等" />
           </ModalForm>,
@@ -216,13 +217,14 @@ const SopTemplatePage: React.FC = () => {
         }}
         modalProps={{ destroyOnClose: true }}
       >
-        <ProFormText name="name" label="模板名称" rules={[{ required: true }]} />
+        <ProFormText name="templateName" label="模板名称" rules={[{ required: true }]} />
+        <ProFormText name="eventType" label="适用赛事类型" />
         <ProFormTextArea name="description" label="描述" />
       </ModalForm>
 
       {/* 任务管理抽屉 */}
       <Drawer
-        title={`SOP 任务管理 — ${currentTemplate?.name || ''}`}
+        title={`SOP 任务管理 — ${currentTemplate?.templateName || ''}`}
         open={drawerVisible}
         onClose={() => { setDrawerVisible(false); setTasks([]); }}
         width={780}
