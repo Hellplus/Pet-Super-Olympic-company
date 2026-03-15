@@ -49,11 +49,11 @@ export class DashboardService {
     // 1. 全国招商总额排行榜（按分会）
     const sponsorRanking = await this.contractRepo
       .createQueryBuilder('c')
-      .select('c.organization_id', 'orgId')
+      .select('c.org_id', 'orgId')
       .addSelect('SUM(c.amount)', 'totalAmount')
       .addSelect('COUNT(*)', 'contractCount')
       .where('c.deleted_at IS NULL')
-      .groupBy('c.organization_id')
+      .groupBy('c.org_id')
       .orderBy('"totalAmount"', 'DESC')
       .limit(20)
       .getRawMany();
@@ -61,9 +61,9 @@ export class DashboardService {
     // 2. 总部应收账款（未结算的授权费）
     const receivableResult = await this.settlementRepo
       .createQueryBuilder('s')
-      .select('SUM(s.hq_amount)', 'totalReceivable')
-      .addSelect('SUM(CASE WHEN s.status = 1 THEN s.hq_amount ELSE 0 END)', 'paidAmount')
-      .addSelect('SUM(CASE WHEN s.status = 0 THEN s.hq_amount ELSE 0 END)', 'unpaidAmount')
+      .select('SUM(s.commission_amount)', 'totalReceivable')
+      .addSelect('SUM(CASE WHEN s.status = 1 THEN s.commission_amount ELSE 0 END)', 'paidAmount')
+      .addSelect('SUM(CASE WHEN s.status = 0 THEN s.commission_amount ELSE 0 END)', 'unpaidAmount')
       .where('s.deleted_at IS NULL')
       .getRawOne();
 
@@ -116,7 +116,7 @@ export class DashboardService {
       .createQueryBuilder('r')
       .select("TO_CHAR(r.created_at, 'YYYY-MM')", 'month')
       .addSelect('SUM(r.amount)', 'totalAmount')
-      .addSelect('SUM(r.hq_commission)', 'hqCommission')
+      .addSelect('SUM(r.hq_commission_amount)', 'hqCommission')
       .where('r.deleted_at IS NULL')
       .groupBy("TO_CHAR(r.created_at, 'YYYY-MM')")
       .orderBy('"month"', 'ASC')
@@ -125,11 +125,11 @@ export class DashboardService {
     // 2. 各地超预算频率趋势
     const overBudgetStats = await this.expenseRepo
       .createQueryBuilder('e')
-      .select('e.organization_id', 'orgId')
+      .select('e.org_id', 'orgId')
       .addSelect('COUNT(*)', 'totalExpenses')
       .addSelect('SUM(CASE WHEN e.is_over_budget = true THEN 1 ELSE 0 END)', 'overBudgetCount')
       .where('e.deleted_at IS NULL')
-      .groupBy('e.organization_id')
+      .groupBy('e.org_id')
       .getRawMany();
 
     // 3. 未核销糊涂账预警（已审批但未上传凭证）
@@ -138,11 +138,11 @@ export class DashboardService {
       .select('e.id', 'id')
       .addSelect('e.subject', 'subject')
       .addSelect('e.amount', 'amount')
-      .addSelect('e.organization_id', 'orgId')
+      .addSelect('e.org_id', 'orgId')
       .addSelect('e.created_at', 'createdAt')
       .where('e.deleted_at IS NULL')
       .andWhere('e.status = :status', { status: 2 })
-      .andWhere('e.payment_voucher IS NULL')
+      .andWhere('e.payment_voucher_url IS NULL')
       .orderBy('e.created_at', 'ASC')
       .limit(50)
       .getRawMany();
@@ -150,12 +150,12 @@ export class DashboardService {
     // 4. 预算消耗概览
     const budgetHealth = await this.budgetRepo
       .createQueryBuilder('b')
-      .select('b.organization_id', 'orgId')
-      .addSelect('SUM(b.total_amount)', 'totalBudget')
+      .select('b.org_id', 'orgId')
+      .addSelect('SUM(b.total_budget)', 'totalBudget')
       .addSelect('SUM(b.used_amount)', 'usedBudget')
       .addSelect('SUM(b.remaining_amount)', 'remainingBudget')
       .where('b.deleted_at IS NULL')
-      .groupBy('b.organization_id')
+      .groupBy('b.org_id')
       .getRawMany();
 
     return {
@@ -174,7 +174,7 @@ export class DashboardService {
       .select('COUNT(*)', 'contractCount')
       .addSelect('SUM(c.amount)', 'totalAmount')
       .addSelect("SUM(CASE WHEN c.status = 'active' THEN c.amount ELSE 0 END)", 'activeAmount')
-      .where('c.organization_id = :orgId', { orgId })
+      .where('c.org_id = :orgId', { orgId })
       .andWhere('c.deleted_at IS NULL')
       .getRawOne();
 
@@ -182,10 +182,10 @@ export class DashboardService {
     const budgetStats = await this.budgetRepo
       .createQueryBuilder('b')
       .select('b.event_name', 'eventName')
-      .addSelect('b.total_amount', 'totalAmount')
+      .addSelect('b.total_budget', 'totalAmount')
       .addSelect('b.used_amount', 'usedAmount')
       .addSelect('b.remaining_amount', 'remainingAmount')
-      .where('b.organization_id = :orgId', { orgId })
+      .where('b.org_id = :orgId', { orgId })
       .andWhere('b.deleted_at IS NULL')
       .getRawMany();
 
@@ -197,7 +197,7 @@ export class DashboardService {
       .addSelect('e.event_date', 'eventDate')
       .addSelect('e.overall_progress', 'progress')
       .addSelect('e.status', 'status')
-      .where('e.organization_id = :orgId', { orgId })
+      .where('e.org_id = :orgId', { orgId })
       .andWhere('e.deleted_at IS NULL')
       .orderBy('e.event_date', 'ASC')
       .getRawMany();
@@ -207,7 +207,7 @@ export class DashboardService {
       .createQueryBuilder('r')
       .select("TO_CHAR(r.created_at, 'YYYY-MM')", 'month')
       .addSelect('SUM(r.amount)', 'totalAmount')
-      .where('r.organization_id = :orgId', { orgId })
+      .where('r.org_id = :orgId', { orgId })
       .andWhere('r.deleted_at IS NULL')
       .groupBy("TO_CHAR(r.created_at, 'YYYY-MM')")
       .orderBy('"month"', 'ASC')

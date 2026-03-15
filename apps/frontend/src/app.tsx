@@ -1,10 +1,17 @@
+import React from 'react';
 import { RequestConfig, RunTimeLayoutConfig, history } from '@umijs/max';
-import { message } from 'antd';
+import { message, Dropdown, Avatar, Space, Typography } from 'antd';
+import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
+
+const { Text } = Typography;
+
+const publicPaths = ['/login', '/public/'];
 
 // 全局初始化数据
 export async function getInitialState() {
+  const isPublic = publicPaths.some((p) => location.pathname.startsWith(p));
   const token = localStorage.getItem('accessToken');
-  if (!token && location.pathname !== '/login') {
+  if (!token && !isPublic) {
     history.push('/login');
     return { currentUser: null };
   }
@@ -23,15 +30,49 @@ export async function getInitialState() {
 }
 
 // 布局配置
-export const layout: RunTimeLayoutConfig = ({ initialState }) => ({
-  rightContentRender: () => null,
+export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => ({
+  rightContentRender: () => {
+    const user = initialState?.currentUser;
+    if (!user) return null;
+    const menuItems = [
+      { key: 'profile', icon: <UserOutlined />, label: user.realName || user.username },
+      { type: 'divider' as const },
+      { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true },
+    ];
+    return (
+      <Dropdown menu={{
+        items: menuItems,
+        onClick: ({ key }) => {
+          if (key === 'logout') {
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            setInitialState((s: any) => ({ ...s, currentUser: null }));
+            history.push('/login');
+            message.success('已退出登录');
+          }
+        },
+      }}>
+        <Space style={{ cursor: 'pointer', padding: '0 12px' }}>
+          <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+          <Text style={{ maxWidth: 100, color: 'rgba(0,0,0,0.65)' }} ellipsis>
+            {user.realName || user.username}
+          </Text>
+        </Space>
+      </Dropdown>
+    );
+  },
   waterMarkProps: { content: initialState?.currentUser?.realName },
   onPageChange: () => {
-    if (!initialState?.currentUser && location.pathname !== '/login') {
+    const isPublic = publicPaths.some((p) => location.pathname.startsWith(p));
+    if (!initialState?.currentUser && !isPublic) {
       history.push('/login');
     }
   },
   menuHeaderRender: undefined,
+  token: {
+    header: { colorBgHeader: '#fff', colorHeaderTitle: '#1a1a2e' },
+    sider: { colorMenuBackground: '#fff', colorTextMenu: '#595959', colorTextMenuSelected: '#1890ff', colorBgMenuItemSelected: '#e6f7ff' },
+  },
 });
 
 // 请求配置
@@ -50,8 +91,9 @@ export const request: RequestConfig = {
   responseInterceptors: [
     (response: any) => {
       const { data } = response;
-      if (data?.code !== 200) {
-        message.error(data?.message || '请求失败');
+      // 仅对包含 code 字段的标准响应做错误提示，避免误判文件下载等场景
+      if (data && typeof data === 'object' && 'code' in data && data.code !== 200) {
+        message.error(data.message || '请求失败');
       }
       return response;
     },
@@ -62,6 +104,11 @@ export const request: RequestConfig = {
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         history.push('/login');
+        message.warning('登录已过期，请重新登录');
+      } else if (error?.response?.status === 403) {
+        message.error('无权限执行此操作');
+      } else if (error?.response?.status >= 500) {
+        message.error('服务器异常，请稍后重试');
       }
     },
   },

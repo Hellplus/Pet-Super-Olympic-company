@@ -12,3 +12,4 @@ export async function createExpense(data: any) { return request('/finance/expens
 export async function approveExpense(id: string, approve: boolean) { return request('/finance/expenses/' + id + '/approve', { method: 'POST', data: { approve } }); }
 export async function confirmPayment(id: string, data: any) { return request('/finance/expenses/' + id + '/confirm-payment', { method: 'POST', data }); }
 export async function getApprovalConfigs() { return request('/finance/approval-configs', { method: 'GET' }); }
+export async function checkBudget(data: { budgetId: string; subject?: string; amount: number }) { return request('/finance/budget-check', { method: 'POST', data }); }

@@ -18,6 +18,6 @@ export async function deleteOrg(id: string) {
 export async function moveOrg(data: { nodeId: string; newParentId: string }) {
   return request('/organizations/move', { method: 'POST', data });
 }
-export async function disableOrg(id: string) {
-  return request('/organizations/' + id + '/disable', { method: 'POST' });
+export async function meltdownOrg(id: string, reason?: string) {
+  return request('/organizations/' + id + '/meltdown', { method: 'POST', data: { reason } });
 }
