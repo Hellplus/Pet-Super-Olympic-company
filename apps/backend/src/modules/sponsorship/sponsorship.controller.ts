@@ -38,6 +38,14 @@ export class SponsorshipController {
   @Get('clients')
   findAllClients(@Query('orgId') orgId?: string) { return this.service.findAllClients(orgId); }
 
+  @Put('clients/:id')
+  @ApiOperation({ summary: '更新客户信息' })
+  updateClient(@Param('id') id: string, @Body() body: any) { return this.service.updateClient(id, body); }
+
+  @Delete('clients/:id')
+  @ApiOperation({ summary: '删除客户' })
+  deleteClient(@Param('id') id: string) { return this.service.deleteClient(id); }
+
   @Post('clients/:id/refer-hq')
   @ApiOperation({ summary: '引荐给总部' })
   referToHq(@Param('id') id: string) { return this.service.referToHq(id); }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Event } from './entities/event.entity';
@@ -80,6 +80,72 @@ export class EventService {
     if (!t) throw new NotFoundException('模板不存在');
     const tasks = await this.sopTaskRepo.find({ where: { templateId: id }, order: { sortOrder: 'ASC' } });
     return { ...t, tasks };
+  }
+
+  async updateSopTemplate(id: string, data: { name?: string; description?: string }) {
+    const t = await this.sopRepo.findOne({ where: { id } });
+    if (!t) throw new NotFoundException('模板不存在');
+    if (data.name) t.templateName = data.name;
+    if (data.description !== undefined) t.description = data.description;
+    return this.sopRepo.save(t);
+  }
+
+  async deleteSopTemplate(id: string) {
+    const t = await this.sopRepo.findOne({ where: { id } });
+    if (!t) throw new NotFoundException('模板不存在');
+    // 检查是否有赛事引用了此模板
+    const eventCount = await this.eventRepo.count({ where: { sopTemplateId: id } as any });
+    if (eventCount > 0) {
+      throw new BadRequestException(`该模板已被 ${eventCount} 场赛事引用，无法删除`);
+    }
+    // 先删任务，再删模板
+    await this.sopTaskRepo.delete({ templateId: id });
+    await this.sopRepo.remove(t);
+    return { success: true };
+  }
+
+  async addTemplateTask(templateId: string, data: { taskName: string; daysBeforeEvent: number; assigneeRole?: string; description?: string; sortOrder?: number }) {
+    const t = await this.sopRepo.findOne({ where: { id: templateId } });
+    if (!t) throw new NotFoundException('模板不存在');
+    const maxOrder = await this.sopTaskRepo.createQueryBuilder('t')
+      .where('t.template_id = :tid', { tid: templateId })
+      .select('MAX(t.sort_order)', 'maxSort')
+      .getRawOne();
+    const task = this.sopTaskRepo.create({
+      templateId,
+      taskName: data.taskName,
+      daysBeforeEvent: data.daysBeforeEvent,
+      defaultRole: data.assigneeRole || null,
+      description: data.description || null,
+      sortOrder: data.sortOrder ?? ((maxOrder?.maxSort || 0) + 1),
+      isRequired: true,
+    } as any);
+    return this.sopTaskRepo.save(task);
+  }
+
+  async updateTemplateTask(templateId: string, taskId: string, data: any) {
+    const task = await this.sopTaskRepo.findOne({ where: { id: taskId, templateId } });
+    if (!task) throw new NotFoundException('任务不存在');
+    if (data.taskName) task.taskName = data.taskName;
+    if (data.daysBeforeEvent !== undefined) task.daysBeforeEvent = data.daysBeforeEvent;
+    if (data.assigneeRole !== undefined) task.defaultRole = data.assigneeRole;
+    if (data.description !== undefined) task.description = data.description;
+    if (data.sortOrder !== undefined) task.sortOrder = data.sortOrder;
+    return this.sopTaskRepo.save(task);
+  }
+
+  async deleteTemplateTask(templateId: string, taskId: string) {
+    const task = await this.sopTaskRepo.findOne({ where: { id: taskId, templateId } });
+    if (!task) throw new NotFoundException('任务不存在');
+    await this.sopTaskRepo.remove(task);
+    return { success: true };
+  }
+
+  async reorderTemplateTasks(templateId: string, taskIds: string[]) {
+    for (let i = 0; i < taskIds.length; i++) {
+      await this.sopTaskRepo.update({ id: taskIds[i], templateId }, { sortOrder: i + 1 });
+    }
+    return { success: true };
   }
 
   /** 根据SOP模板+开赛日期自动派发任务 */

@@ -13,3 +13,11 @@ coverage/
 src/.umi/
 .umi/
 .umi-production/
+
+# TypeScript build artifacts in shared package
+packages/shared/src/**/*.js
+packages/shared/src/**/*.d.ts
+packages/shared/src/**/*.js.map
+
+# NestJS build artifacts
+apps/backend/tsconfig.build.tsbuildinfo

@@ -49,6 +49,30 @@ export class SponsorshipService {
     qb.orderBy('entity.created_at', 'DESC');
     return qb.getMany();
   }
+  async updateClient(id: string, data: any) {
+    const client = await this.clientRepo.findOne({ where: { id } });
+    if (!client) throw new NotFoundException('客户不存在');
+    if (data.clientName) client.companyName = data.clientName;
+    if (data.contactName) client.contactPerson = data.contactName;
+    if (data.contactPhone !== undefined) client.contactPhone = data.contactPhone;
+    if (data.industry !== undefined) client.category = data.industry;
+    if (data.intentAmount !== undefined) client.intendedAmount = data.intentAmount;
+    if (data.referToHq !== undefined) client.isReferredToHq = data.referToHq;
+    return this.clientRepo.save(client);
+  }
+
+  async deleteClient(id: string) {
+    const client = await this.clientRepo.findOne({ where: { id } });
+    if (!client) throw new NotFoundException('客户不存在');
+    // 检查是否有合同关联
+    const contractCount = await this.contractRepo.count({ where: { clientId: id } as any });
+    if (contractCount > 0) {
+      throw new BadRequestException(`该客户已关联 ${contractCount} 个合同，无法删除`);
+    }
+    await this.clientRepo.remove(client);
+    return { success: true };
+  }
+
   async referToHq(id: string) {
     await this.clientRepo.update(id, { isReferredToHq: true });
   }
