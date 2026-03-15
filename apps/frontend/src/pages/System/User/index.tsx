@@ -3,6 +3,7 @@ import { PageContainer, ProTable, ModalForm, ProFormText, ProFormSelect } from '
 import { Button, message, Popconfirm, Space, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
+import { useAccess } from '@umijs/max';
 import * as userApi from '@/services/user';
 import * as roleApi from '@/services/role';
 
@@ -16,6 +17,7 @@ const UserPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
+  const access = useAccess();
 
   const columns: ProColumns[] = [
     { title: '账号', dataIndex: 'username', width: 120 },
@@ -40,14 +42,14 @@ const UserPage: React.FC = () => {
       render: (_, record) => (
         <Space>
           <a onClick={() => { setEditingUser(record); setModalVisible(true); }}>编辑</a>
-          {record.status === 1 ? (
+          {access.canDeleteUser && record.status === 1 ? (
             <Popconfirm title="确认封停?" onConfirm={async () => { await userApi.disableUser(record.id); message.success('已封停'); actionRef.current?.reload(); }}>
               <a style={{ color: 'orange' }}>封停</a>
             </Popconfirm>
-          ) : (
+          ) : access.canDeleteUser && record.status !== 1 ? (
             <a onClick={async () => { await userApi.enableUser(record.id); message.success('已启用'); actionRef.current?.reload(); }}>启用</a>
-          )}
-          {!record.isSuperAdmin && (
+          ) : null}
+          {access.canDeleteUser && !record.isSuperAdmin && (
             <Popconfirm title="确认删除?" onConfirm={async () => { await userApi.deleteUser(record.id); message.success('已删除'); actionRef.current?.reload(); }}>
               <a style={{ color: 'red' }}>删除</a>
             </Popconfirm>
@@ -69,7 +71,7 @@ const UserPage: React.FC = () => {
           return { data: res.data?.items || [], total: res.data?.total || 0, success: true };
         }}
         toolBarRender={() => [
-          <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditingUser(null); setModalVisible(true); }}>新增用户</Button>,
+          access.canCreateUser && <Button key="add" type="primary" icon={<PlusOutlined />} onClick={() => { setEditingUser(null); setModalVisible(true); }}>新增用户</Button>,
         ]}
       />
       <ModalForm

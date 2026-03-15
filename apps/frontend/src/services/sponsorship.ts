@@ -5,6 +5,8 @@ export async function deleteProtectedCategory(id: string) { return request('/spo
 export async function checkCategory(category: string) { return request('/sponsorship/check-category', { method: 'GET', params: { category } }); }
 export async function getClients(orgId?: string) { return request('/sponsorship/clients', { method: 'GET', params: { orgId } }); }
 export async function createClient(data: any) { return request('/sponsorship/clients', { method: 'POST', data }); }
+export async function updateClient(id: string, data: any) { return request('/sponsorship/clients/' + id, { method: 'PUT', data }); }
+export async function deleteClient(id: string) { return request('/sponsorship/clients/' + id, { method: 'DELETE' }); }
 export async function referToHq(id: string) { return request('/sponsorship/clients/' + id + '/refer-hq', { method: 'POST' }); }
 export async function getContracts(params: any) { return request('/sponsorship/contracts', { method: 'GET', params }); }
 export async function createContract(data: any) { return request('/sponsorship/contracts', { method: 'POST', data }); }

@@ -1,11 +1,39 @@
 import React from 'react';
 import { RequestConfig, RunTimeLayoutConfig, history } from '@umijs/max';
 import { message, Dropdown, Avatar, Space, Typography } from 'antd';
-import { UserOutlined, LogoutOutlined, SettingOutlined } from '@ant-design/icons';
+import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
 const publicPaths = ['/login', '/public/'];
+
+// Token 自动刷新
+let isRefreshing = false;
+let pendingRequests: (() => void)[] = [];
+
+async function refreshToken(): Promise<boolean> {
+  const refreshTokenStr = localStorage.getItem('refreshToken');
+  if (!refreshTokenStr) return false;
+  try {
+    const res = await fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: refreshTokenStr }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const tokenData = data?.data || data;
+      if (tokenData?.accessToken) {
+        localStorage.setItem('accessToken', tokenData.accessToken);
+        if (tokenData.refreshToken) {
+          localStorage.setItem('refreshToken', tokenData.refreshToken);
+        }
+        return true;
+      }
+    }
+  } catch {}
+  return false;
+}
 
 // 全局初始化数据
 export async function getInitialState() {
@@ -23,6 +51,26 @@ export async function getInitialState() {
       if (res.ok) {
         const data = await res.json();
         return { currentUser: data.data };
+      }
+      // Token 过期，尝试刷新
+      if (res.status === 401) {
+        const refreshed = await refreshToken();
+        if (refreshed) {
+          const newToken = localStorage.getItem('accessToken');
+          const retryRes = await fetch('/api/v1/auth/profile', {
+            headers: { Authorization: 'Bearer ' + newToken },
+          });
+          if (retryRes.ok) {
+            const data = await retryRes.json();
+            return { currentUser: data.data };
+          }
+        }
+        // 刷新也失败
+        if (!isPublic) {
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          history.push('/login');
+        }
       }
     } catch {}
   }
@@ -75,7 +123,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
   },
 });
 
-// 请求配置
+// 请求配置 - 含 Token 自动刷新
 export const request: RequestConfig = {
   baseURL: '/api/v1',
   timeout: 30000,
@@ -99,15 +147,32 @@ export const request: RequestConfig = {
     },
   ],
   errorConfig: {
-    errorHandler: (error: any) => {
-      if (error?.response?.status === 401) {
+    errorHandler: async (error: any) => {
+      const { response } = error || {};
+      if (response?.status === 401) {
+        // 避免并发刷新
+        if (!isRefreshing) {
+          isRefreshing = true;
+          const refreshed = await refreshToken();
+          isRefreshing = false;
+
+          if (refreshed) {
+            // 刷新成功，重试挂起的请求
+            pendingRequests.forEach((cb) => cb());
+            pendingRequests = [];
+            // 当前请求无法自动重试，提示用户刷新
+            message.info('登录已续期，请重新操作');
+            return;
+          }
+        }
+        // 刷新失败，跳转登录
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         history.push('/login');
         message.warning('登录已过期，请重新登录');
-      } else if (error?.response?.status === 403) {
+      } else if (response?.status === 403) {
         message.error('无权限执行此操作');
-      } else if (error?.response?.status >= 500) {
+      } else if (response?.status >= 500) {
         message.error('服务器异常，请稍后重试');
       }
     },

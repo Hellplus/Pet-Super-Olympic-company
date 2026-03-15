@@ -2,7 +2,7 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "frontend",
+      "name": "ipoc-frontend",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["--filter", "@ipoc/frontend", "run", "dev"],
       "port": 8000

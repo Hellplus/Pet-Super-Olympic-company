@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { Card, Tree, Button, Space, Modal, Form, Input, Select, InputNumber, message, Popconfirm, Descriptions, Tag, Row, Col, Alert, Typography, Result } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, StopOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { useAccess } from '@umijs/max';
 import * as orgApi from '@/services/organization';
 
 const { Text, Paragraph } = Typography;
@@ -19,6 +20,7 @@ const OrganizationPage: React.FC = () => {
   const [meltdownReason, setMeltdownReason] = useState('');
   const [meltdownResult, setMeltdownResult] = useState<any>(null);
   const [meltdownLoading, setMeltdownLoading] = useState(false);
+  const access = useAccess();
 
   const loadTree = async () => {
     const res = await orgApi.getOrgTree();
