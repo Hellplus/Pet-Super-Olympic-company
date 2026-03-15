@@ -72,7 +72,21 @@ export class EventService {
   }
 
   async findAllSopTemplates() {
-    return this.sopRepo.find({ order: { createdAt: 'DESC' } });
+    const templates = await this.sopRepo
+      .createQueryBuilder('t')
+      .leftJoin('biz_sop_template_task', 'task', 'task.template_id = t.id')
+      .addSelect('COUNT(task.id)', 'taskCount')
+      .leftJoin('biz_event', 'evt', 'evt.sop_template_id = t.id')
+      .addSelect('COUNT(DISTINCT evt.id)', 'eventCount')
+      .groupBy('t.id')
+      .orderBy('t.created_at', 'DESC')
+      .getRawAndEntities();
+
+    return templates.entities.map((entity, i) => ({
+      ...entity,
+      taskCount: Number(templates.raw[i]?.taskCount || 0),
+      eventCount: Number(templates.raw[i]?.eventCount || 0),
+    }));
   }
 
   async findSopTemplateById(id: string) {

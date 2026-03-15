@@ -141,8 +141,8 @@ const SopTemplatePage: React.FC = () => {
     { title: '任务名称', dataIndex: 'taskName', ellipsis: true },
     { title: '开赛前(天)', dataIndex: 'daysBeforeEvent', width: 110,
       render: (v: any) => <Tag color="orange">D-{v}</Tag> },
-    { title: '负责角色', dataIndex: 'assigneeRole', width: 110,
-      render: (v: any) => <Tag color="blue">{v}</Tag> },
+    { title: '负责角色', dataIndex: 'defaultRole', width: 110,
+      render: (v: any) => v ? <Tag color="blue">{v}</Tag> : '-' },
     { title: '说明', dataIndex: 'description', ellipsis: true },
     {
       title: '操作', width: 160,

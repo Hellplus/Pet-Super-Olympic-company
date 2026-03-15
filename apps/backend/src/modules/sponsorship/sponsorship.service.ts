@@ -52,12 +52,15 @@ export class SponsorshipService {
   async updateClient(id: string, data: any) {
     const client = await this.clientRepo.findOne({ where: { id } });
     if (!client) throw new NotFoundException('客户不存在');
-    if (data.clientName) client.companyName = data.clientName;
-    if (data.contactName) client.contactPerson = data.contactName;
+    // 兼容新旧两套字段名
+    if (data.companyName || data.clientName) client.companyName = data.companyName || data.clientName;
+    if (data.contactPerson || data.contactName) client.contactPerson = data.contactPerson || data.contactName;
     if (data.contactPhone !== undefined) client.contactPhone = data.contactPhone;
-    if (data.industry !== undefined) client.category = data.industry;
-    if (data.intentAmount !== undefined) client.intendedAmount = data.intentAmount;
-    if (data.referToHq !== undefined) client.isReferredToHq = data.referToHq;
+    if (data.category !== undefined || data.industry !== undefined) client.category = data.category ?? data.industry;
+    if (data.intendedAmount !== undefined || data.intentAmount !== undefined) client.intendedAmount = data.intendedAmount ?? data.intentAmount;
+    if (data.isReferredToHq !== undefined || data.referToHq !== undefined) client.isReferredToHq = data.isReferredToHq ?? data.referToHq;
+    if (data.email !== undefined) (client as any).email = data.email;
+    if (data.remark !== undefined) (client as any).remark = data.remark;
     return this.clientRepo.save(client);
   }
 
