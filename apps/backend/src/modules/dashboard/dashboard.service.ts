@@ -136,7 +136,7 @@ export class DashboardService {
     const unreconciledExpenses = await this.expenseRepo
       .createQueryBuilder('e')
       .select('e.id', 'id')
-      .addSelect('e.subject', 'subject')
+      .addSelect('e.budget_subject', 'subject')
       .addSelect('e.amount', 'amount')
       .addSelect('e.org_id', 'orgId')
       .addSelect('e.created_at', 'createdAt')
@@ -173,7 +173,7 @@ export class DashboardService {
       .createQueryBuilder('c')
       .select('COUNT(*)', 'contractCount')
       .addSelect('SUM(c.amount)', 'totalAmount')
-      .addSelect("SUM(CASE WHEN c.status = 'active' THEN c.amount ELSE 0 END)", 'activeAmount')
+      .addSelect("SUM(CASE WHEN c.status = 1 THEN c.amount ELSE 0 END)", 'activeAmount')
       .where('c.org_id = :orgId', { orgId })
       .andWhere('c.deleted_at IS NULL')
       .getRawOne();
@@ -193,7 +193,7 @@ export class DashboardService {
     const eventProgress = await this.eventRepo
       .createQueryBuilder('e')
       .select('e.id', 'id')
-      .addSelect('e.name', 'name')
+      .addSelect('e.event_name', 'name')
       .addSelect('e.event_date', 'eventDate')
       .addSelect('e.overall_progress', 'progress')
       .addSelect('e.status', 'status')
