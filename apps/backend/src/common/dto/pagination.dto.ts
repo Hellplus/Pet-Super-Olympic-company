@@ -9,6 +9,12 @@ export class PaginationDto {
   @Min(1)
   page: number = DEFAULT_PAGE;
 
+  @ApiPropertyOptional({ description: '页码(ProTable兼容)' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  current?: number;
+
   @ApiPropertyOptional({ default: DEFAULT_PAGE_SIZE, description: '每页条数' })
   @IsOptional()
   @IsInt()

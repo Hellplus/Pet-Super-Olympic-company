@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindOptionsWhere, ILike } from 'typeorm';
 import { RevenueRecord } from './entities/revenue-record.entity';
 import { SettlementBill } from './entities/settlement-bill.entity';
 import { EventBudget } from './entities/event-budget.entity';
@@ -8,7 +8,6 @@ import { BudgetItem } from './entities/budget-item.entity';
 import { ExpenseRequest } from './entities/expense-request.entity';
 import { ApprovalConfig } from './entities/approval-config.entity';
 import { CreateRevenueDto, QueryRevenueDto, CreateEventBudgetDto, CreateExpenseDto, QueryExpenseDto, ConfirmPaymentDto } from './dto/finance.dto';
-import { paginate } from '../../common/utils/pagination.util';
 
 @Injectable()
 export class FinanceService {
@@ -24,20 +23,25 @@ export class FinanceService {
   // ====== 收款登记 ======
   async createRevenue(dto: CreateRevenueDto, userId: string) {
     const no = 'RV' + Date.now().toString(36).toUpperCase();
-    const hqAmount = Number((dto.amount * 0.20).toFixed(2)); // 默认20%
+    const hqAmount = Number((dto.amount * 0.20).toFixed(2));
     return this.revenueRepo.save(this.revenueRepo.create({
       ...dto, revenueNo: no, hqCommissionRate: 20, hqCommissionAmount: hqAmount, createdBy: userId,
     }));
   }
 
   async findAllRevenues(query: QueryRevenueDto) {
-    const qb = this.revenueRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
-    if (query.orgId) qb.andWhere('entity.org_id = :o', { o: query.orgId });
-    if (query.revenueType) qb.andWhere('entity.revenue_type = :t', { t: query.revenueType });
-    if (query.startDate) qb.andWhere('entity.revenue_date >= :sd', { sd: query.startDate });
-    if (query.endDate) qb.andWhere('entity.revenue_date <= :ed', { ed: query.endDate });
-    qb.orderBy('entity.revenue_date', 'DESC');
-    return paginate(qb, query);
+    const where: FindOptionsWhere<RevenueRecord> = {};
+    if (query.orgId) where.orgId = query.orgId;
+    if (query.revenueType) where.revenueType = query.revenueType;
+    const page = (query as any).current || query.page || 1;
+    const pageSize = query.pageSize || 20;
+    const [items, total] = await this.revenueRepo.findAndCount({
+      where,
+      order: { revenueDate: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   // ====== 清算账单 ======
@@ -53,10 +57,9 @@ export class FinanceService {
   }
 
   async findAllBills(orgId?: string) {
-    const qb = this.billRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
-    if (orgId) qb.where('entity.org_id = :o', { o: orgId });
-    qb.orderBy('entity.created_at', 'DESC');
-    return qb.getMany();
+    const where: FindOptionsWhere<SettlementBill> = {};
+    if (orgId) where.orgId = orgId;
+    return this.billRepo.find({ where, order: { createdAt: 'DESC' } });
   }
 
   // ====== 赛事预算包 ======
@@ -82,33 +85,27 @@ export class FinanceService {
   }
 
   async findBudgetById(id: string) {
-    const b = await this.budgetRepo.findOne({ where: { id }, relations: ['organization'] });
+    const b = await this.budgetRepo.findOne({ where: { id } });
     if (!b) throw new NotFoundException('预算包不存在');
     const items = await this.budgetItemRepo.find({ where: { budgetId: id } });
     return { ...b, items };
   }
 
   async findAllBudgets(orgId?: string) {
-    const qb = this.budgetRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
-    if (orgId) qb.where('entity.org_id = :o', { o: orgId });
-    qb.orderBy('entity.created_at', 'DESC');
-    return qb.getMany();
+    const where: FindOptionsWhere<EventBudget> = {};
+    if (orgId) where.orgId = orgId;
+    return this.budgetRepo.find({ where, order: { createdAt: 'DESC' } });
   }
 
   // ====== 报销/付款单 ======
   async createExpense(dto: CreateExpenseDto, userId: string, userName: string) {
-    // === PRD "超支硬拦截" ===
     let isOverBudget = false;
     if (dto.budgetId) {
       const budget = await this.budgetRepo.findOneOrFail({ where: { id: dto.budgetId } });
       if (budget.status !== 1) throw new BadRequestException('该预算包未审批通过');
-
-      // 检查总预算余额
       if (dto.amount > Number(budget.remainingAmount)) {
         isOverBudget = true;
       }
-
-      // 检查单科目预算（如有指定科目）
       if (dto.subjectName) {
         const item = await this.budgetItemRepo.findOne({
           where: { budgetId: dto.budgetId, subjectName: dto.subjectName },
@@ -120,8 +117,6 @@ export class FinanceService {
           }
         }
       }
-
-      // 硬拦截：超预算直接拒绝，必须走超预算特批
       if (isOverBudget && !dto.forceOverBudget) {
         throw new BadRequestException(
           '超预算拦截：该笔报销将导致预算超支！请发起《超预算特批申请》（勾选"超预算特批"选项）。'
@@ -132,36 +127,37 @@ export class FinanceService {
     return this.expenseRepo.save(this.expenseRepo.create({
       ...dto, expenseNo: no, applicantId: userId, applicantName: userName,
       isOverBudget, status: isOverBudget ? 10 : 1, createdBy: userId,
-      // status 10 = 超预算特批待审 (需要总部审批)
     }));
   }
 
   async findAllExpenses(query: QueryExpenseDto) {
-    const qb = this.expenseRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
-    if (query.orgId) qb.andWhere('entity.org_id = :o', { o: query.orgId });
-    if (query.status !== undefined) qb.andWhere('entity.status = :s', { s: query.status });
-    if (query.expenseType) qb.andWhere('entity.expense_type = :t', { t: query.expenseType });
-    qb.orderBy('entity.created_at', 'DESC');
-    return paginate(qb, query);
+    const where: FindOptionsWhere<ExpenseRequest> = {};
+    if (query.orgId) where.orgId = query.orgId;
+    if (query.status !== undefined) where.status = query.status;
+    if (query.expenseType) where.expenseType = query.expenseType;
+    const page = (query as any).current || query.page || 1;
+    const pageSize = query.pageSize || 20;
+    const [items, total] = await this.expenseRepo.findAndCount({
+      where,
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async approveExpense(id: string, approve: boolean) {
     const e = await this.expenseRepo.findOneOrFail({ where: { id } });
-
-    // PRD: 金额条件审批路由 - 根据审批配置判定是否需要加签总部
     if (approve) {
       const route = await this.getApprovalRoute('EXPENSE', Number(e.amount));
       if (route && route.approvalLevel === 'HQ' && e.status === 1) {
-        // 金额>=阈值,自动加签总部,状态变为2(审批中-待总部复核)
         e.status = 2;
         return this.expenseRepo.save(e);
       }
-      e.status = 3; // 直接通过
+      e.status = 3;
     } else {
-      e.status = 4; // 驳回
+      e.status = 4;
     }
-
-    // 如果通过且关联预算,扣减预算余额
     if (e.status === 3 && e.budgetId) {
       await this.budgetRepo.createQueryBuilder().update(EventBudget)
         .set({ usedAmount: () => `used_amount + ${Number(e.amount)}`, remainingAmount: () => `remaining_amount - ${Number(e.amount)}` })
@@ -189,7 +185,6 @@ export class FinanceService {
     return this.approvalConfigRepo.save(this.approvalConfigRepo.create(data));
   }
 
-  /** PRD: "基于金额门槛的单据流转配置" - 查找匹配的审批路由 */
   async getApprovalRoute(bizType: string, amount: number) {
     const configs = await this.approvalConfigRepo.find({
       where: { bizType, status: 1 },
@@ -211,7 +206,6 @@ export class FinanceService {
     return { approvalLevel: 'LOCAL', description: '无匹配规则,默认地方终审' };
   }
 
-  /** PRD: 清算催缴 - 批量生成所有分会的清算账单 */
   async batchGenerateSettlement(period: string) {
     const revenues = await this.revenueRepo.createQueryBuilder('r')
       .select('r.org_id', 'orgId')
@@ -231,10 +225,9 @@ export class FinanceService {
     return { generatedCount: bills.length, bills };
   }
 
-  /** 标记清算账单为已催缴 */
   async markBillReminded(billId: string) {
     const bill = await this.billRepo.findOneOrFail({ where: { id: billId } });
-    bill.status = 2; // 2=已催缴
+    bill.status = 2;
     return this.billRepo.save(bill);
   }
 }

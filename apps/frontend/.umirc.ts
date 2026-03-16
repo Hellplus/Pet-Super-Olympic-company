@@ -12,8 +12,11 @@ export default defineConfig({
   },
   proxy: {
     '/api': {
-      target: 'http://localhost:3000',
+      target: 'http://47.103.200.151',
       changeOrigin: true,
+      secure: false,
+      timeout: 30000,
+      proxyTimeout: 30000,
     },
   },
   routes: [
@@ -51,6 +54,7 @@ export default defineConfig({
       routes: [
         { name: '入驻申请', path: '/branch-hr/application', component: './BranchHr/Application' },
         { name: '专业人才库', path: '/branch-hr/expert', component: './BranchHr/Expert' },
+        { name: '证书管理', path: '/branch-hr/certificate', component: './BranchHr/Certificate' },
         { name: '证书预警', path: '/branch-hr/cert-warning', component: './BranchHr/CertWarning' },
       ],
     },

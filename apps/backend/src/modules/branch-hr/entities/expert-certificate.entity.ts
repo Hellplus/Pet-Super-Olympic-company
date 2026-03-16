@@ -4,12 +4,21 @@ import { Expert } from './expert.entity';
 
 @Entity('biz_expert_certificate')
 export class ExpertCertificate extends BaseEntity {
-  @Column({ name: 'expert_id', type: 'uuid' })
+  @Column({ name: 'cert_type', type: 'varchar', length: 50, default: 'expert', comment: '证书类型: expert=专家, judge=裁判, committee=赛组委, local=地方, other=其他' })
+  certType: string;
+
+  @Column({ name: 'holder_name', type: 'varchar', length: 100, nullable: true, comment: '持证人姓名' })
+  holderName: string;
+
+  @Column({ name: 'expert_id', type: 'uuid', nullable: true })
   expertId: string;
 
-  @ManyToOne(() => Expert, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Expert, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'expert_id' })
   expert: Expert;
+
+  @Column({ name: 'org_id', type: 'uuid', nullable: true, comment: '所属组织ID' })
+  orgId: string;
 
   @Column({ name: 'cert_name', type: 'varchar', length: 200, comment: '证书名称' })
   certName: string;

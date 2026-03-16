@@ -5,16 +5,18 @@ export async function paginate<T extends ObjectLiteral>(
   qb: SelectQueryBuilder<T>,
   dto: PaginationDto,
 ) {
-  const { page, pageSize, sortBy, sortOrder } = dto;
+  const page = dto.current || dto.page;
+  const { pageSize, sortBy, sortOrder } = dto;
 
   if (sortBy) {
     qb.orderBy(`entity.${sortBy}`, sortOrder || 'DESC');
   }
 
-  const [items, total] = await qb
+  const total = await qb.getCount();
+  const items = await qb
     .skip((page - 1) * pageSize)
     .take(pageSize)
-    .getManyAndCount();
+    .getMany();
 
   return {
     items,

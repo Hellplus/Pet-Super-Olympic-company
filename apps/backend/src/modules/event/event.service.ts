@@ -10,7 +10,7 @@ import { User } from '../user/entities/user.entity';
 import { AnnouncementRead } from './entities/announcement-read.entity';
 import { DigitalAsset } from './entities/digital-asset.entity';
 import { CreateEventDto, QueryEventDto, CreateSopTemplateDto, CreateAnnouncementDto } from './dto/event.dto';
-import { paginate } from '../../common/utils/pagination.util';
+
 
 @Injectable()
 export class EventService {
@@ -37,16 +37,23 @@ export class EventService {
   }
 
   async findAllEvents(query: QueryEventDto) {
-    const qb = this.eventRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
+    const where: any = {};
+    if (query.orgId) where.orgId = query.orgId;
+    if (query.status !== undefined) where.status = query.status;
+    const page = (query as any).current || query.page || 1;
+    const pageSize = query.pageSize || 20;
+    const qb = this.eventRepo.createQueryBuilder('entity');
+    if (query.eventName) qb.andWhere('entity.event_name LIKE :n', { n: `%${query.eventName}%` });
     if (query.orgId) qb.andWhere('entity.org_id = :o', { o: query.orgId });
     if (query.status !== undefined) qb.andWhere('entity.status = :s', { s: query.status });
-    if (query.eventName) qb.andWhere('entity.event_name LIKE :n', { n: `%${query.eventName}%` });
     qb.orderBy('entity.event_date', 'DESC');
-    return paginate(qb, query);
+    const total = await qb.getCount();
+    const items = await qb.skip((page - 1) * pageSize).take(pageSize).getMany();
+    return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
   async findEventById(id: string) {
-    const event = await this.eventRepo.findOne({ where: { id }, relations: ['organization'] });
+    const event = await this.eventRepo.findOne({ where: { id } });
     if (!event) throw new NotFoundException('赛事不存在');
     const tasks = await this.eventTaskRepo.find({ where: { eventId: id }, order: { sortOrder: 'ASC' } });
     return { ...event, tasks };
@@ -303,7 +310,6 @@ export class EventService {
   async getSopProgressMatrix() {
     const events = await this.eventRepo.find({
       where: { status: 0 }, // 筹备中的赛事
-      relations: ['organization'],
       order: { eventDate: 'ASC' },
     });
     const matrix = [];

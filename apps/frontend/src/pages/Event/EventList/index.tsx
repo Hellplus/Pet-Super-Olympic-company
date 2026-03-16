@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDatePicker, ProFormSelect, ProFormDigit } from '@ant-design/pro-components';
+import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDatePicker, ProFormSelect, ProFormDigit, ProFormTreeSelect } from '@ant-design/pro-components';
 import { Button, message, Tag, Space, Progress } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/event';
+import * as orgApi from '@/services/organization';
 
 const statusMap: Record<number, { text: string; color: string }> = {
   0: { text: '筹备中', color: 'processing' }, 1: { text: '进行中', color: 'orange' },
@@ -13,6 +14,15 @@ const statusMap: Record<number, { text: string; color: string }> = {
 const EventListPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const [modalVisible, setModalVisible] = useState(false);
+
+  const loadOrgTree = async () => {
+    try {
+      const res = await orgApi.getOrgTree();
+      const transform = (nodes: any[]): any[] =>
+        nodes?.map((n) => ({ title: n.name, value: n.id, children: n.children ? transform(n.children) : [] })) || [];
+      return transform(res.data || res || []);
+    } catch { return []; }
+  };
 
   const columns: ProColumns[] = [
     { title: '赛事编号', dataIndex: 'eventCode', width: 140 },
@@ -44,9 +54,20 @@ const EventListPage: React.FC = () => {
         ]}
       />
       <ModalForm title="创建赛事" open={modalVisible} onOpenChange={setModalVisible} modalProps={{ destroyOnClose: true }}
-        onFinish={async (values) => { await api.createEvent(values); message.success('创建成功'); actionRef.current?.reload(); return true; }}>
+        onFinish={async (values) => {
+          try {
+            await api.createEvent(values);
+            message.success('创建成功');
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || error?.message || '创建失败');
+            return false;
+          }
+        }}>
         <ProFormText name="eventName" label="赛事名称" rules={[{ required: true }]} />
-        <ProFormText name="orgId" label="举办分会ID" rules={[{ required: true }]} />
+        <ProFormTreeSelect name="orgId" label="举办分会" rules={[{ required: true, message: '请选择举办分会' }]}
+          request={loadOrgTree} fieldProps={{ showSearch: true, treeNodeFilterProp: 'title', placeholder: '请选择举办分会' }} />
         <ProFormDatePicker name="eventDate" label="开赛日期" rules={[{ required: true }]} />
         <ProFormText name="eventType" label="赛事类型" rules={[{ required: true }]} />
         <ProFormText name="venue" label="举办地点" />

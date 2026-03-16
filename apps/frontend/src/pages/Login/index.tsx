@@ -1,8 +1,8 @@
 import React from 'react';
 import { LockOutlined, UserOutlined, SafetyCertificateOutlined, GlobalOutlined, TeamOutlined, FundOutlined } from '@ant-design/icons';
-import { LoginForm, ProFormText, ProFormCheckbox } from '@ant-design/pro-components';
+import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { history, useModel } from '@umijs/max';
-import { message, Typography, Space } from 'antd';
+import { message, Typography, Checkbox } from 'antd';
 import { request } from '@umijs/max';
 
 const { Text, Title } = Typography;
@@ -102,7 +102,7 @@ const Login: React.FC = () => {
             rules={[{ required: true, message: '请输入密码' }]}
           />
           <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <ProFormCheckbox noStyle name="autoLogin">记住登录状态</ProFormCheckbox>
+            <Checkbox defaultChecked>记住登录状态</Checkbox>
             <Text type="secondary" style={{ fontSize: 12 }}>忘记密码请联系管理员</Text>
           </div>
         </LoginForm>

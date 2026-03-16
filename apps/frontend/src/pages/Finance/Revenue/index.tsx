@@ -1,13 +1,23 @@
 import React, { useRef, useState } from 'react';
-import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDigit, ProFormDatePicker, ProFormSelect } from '@ant-design/pro-components';
+import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDigit, ProFormDatePicker, ProFormSelect, ProFormTreeSelect } from '@ant-design/pro-components';
 import { Button, message, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/finance';
+import * as orgApi from '@/services/organization';
 
 const RevenuePage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const [modalVisible, setModalVisible] = useState(false);
+
+  const loadOrgTree = async () => {
+    try {
+      const res = await orgApi.getOrgTree();
+      const transform = (nodes: any[]): any[] =>
+        nodes?.map((n) => ({ title: n.name, value: n.id, children: n.children ? transform(n.children) : [] })) || [];
+      return transform(res.data || res || []);
+    } catch { return []; }
+  };
 
   const columns: ProColumns[] = [
     { title: '收款单号', dataIndex: 'revenueNo', width: 150 },
@@ -32,8 +42,19 @@ const RevenuePage: React.FC = () => {
         ]}
       />
       <ModalForm title="录入收款登记单" open={modalVisible} onOpenChange={setModalVisible} modalProps={{ destroyOnClose: true }}
-        onFinish={async (values) => { await api.createRevenue(values); message.success('录入成功'); actionRef.current?.reload(); return true; }}>
-        <ProFormText name="orgId" label="分会ID" rules={[{ required: true }]} />
+        onFinish={async (values) => {
+          try {
+            await api.createRevenue(values);
+            message.success('录入成功');
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || error?.message || '录入失败');
+            return false;
+          }
+        }}>
+        <ProFormTreeSelect name="orgId" label="所属分会" rules={[{ required: true, message: '请选择所属分会' }]}
+          request={loadOrgTree} fieldProps={{ showSearch: true, treeNodeFilterProp: 'title', placeholder: '请选择所属分会' }} />
         <ProFormText name="payerName" label="付款方名称" rules={[{ required: true }]} />
         <ProFormDigit name="amount" label="收款金额" rules={[{ required: true }]} min={0.01} fieldProps={{ precision: 2 }} />
         <ProFormDatePicker name="revenueDate" label="收款日期" rules={[{ required: true }]} />

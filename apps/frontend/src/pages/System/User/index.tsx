@@ -1,11 +1,12 @@
-import React, { useRef, useState } from 'react';
-import { PageContainer, ProTable, ModalForm, ProFormText, ProFormSelect } from '@ant-design/pro-components';
+import React, { useRef, useState, useEffect } from 'react';
+import { PageContainer, ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space, Tag } from 'antd';
 import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { useAccess } from '@umijs/max';
 import * as userApi from '@/services/user';
 import * as roleApi from '@/services/role';
+import * as orgApi from '@/services/organization';
 
 const statusMap: Record<number, { text: string; color: string }> = {
   1: { text: '正常', color: 'green' },
@@ -81,20 +82,53 @@ const UserPage: React.FC = () => {
         initialValues={editingUser || { password: '123456' }}
         modalProps={{ destroyOnClose: true }}
         onFinish={async (values) => {
-          if (editingUser) {
-            await userApi.updateUser(editingUser.id, values);
-            message.success('更新成功');
-          } else {
-            await userApi.createUser(values);
-            message.success('创建成功');
+          try {
+            // gender 需要转为数字
+            if (values.gender !== undefined && values.gender !== null) {
+              values.gender = Number(values.gender);
+            }
+            if (editingUser) {
+              await userApi.updateUser(editingUser.id, values);
+              message.success('更新成功');
+            } else {
+              await userApi.createUser(values);
+              message.success('创建成功');
+            }
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || error?.message || '操作失败');
+            return false;
           }
-          actionRef.current?.reload();
-          return true;
         }}
       >
         <ProFormText name="username" label="登录账号" rules={[{ required: true }]} disabled={!!editingUser} />
         {!editingUser && <ProFormText.Password name="password" label="初始密码" rules={[{ required: true }]} />}
         <ProFormText name="realName" label="真实姓名" rules={[{ required: true }]} />
+        <ProFormTreeSelect
+          name="organizationId"
+          label="所属组织"
+          rules={[{ required: true, message: '请选择所属组织' }]}
+          request={async () => {
+            try {
+              const res = await orgApi.getOrgTree();
+              const transform = (nodes: any[]): any[] =>
+                nodes?.map((n) => ({
+                  title: n.name,
+                  value: n.id,
+                  children: n.children ? transform(n.children) : [],
+                })) || [];
+              return transform(res.data || res || []);
+            } catch {
+              return [];
+            }
+          }}
+          fieldProps={{
+            showSearch: true,
+            treeNodeFilterProp: 'title',
+            placeholder: '请选择所属组织',
+          }}
+        />
         <ProFormText name="phone" label="手机号" />
         <ProFormText name="email" label="邮箱" />
         <ProFormText name="position" label="职位" />

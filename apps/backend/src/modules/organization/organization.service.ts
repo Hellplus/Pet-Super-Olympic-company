@@ -56,8 +56,25 @@ export class OrganizationService {
   }
 
   async getTree(): Promise<Organization[]> {
-    const treeRepo = this.orgRepo.manager.getTreeRepository(Organization);
-    return treeRepo.findTrees({ depth: 10 });
+    // 不使用 findTrees()（mpath 数据不一致时会丢失节点），手动用 parentId 构建树
+    const allOrgs = await this.orgRepo.find({
+      where: { status: 1 },
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+    const map = new Map<string, any>();
+    const roots: any[] = [];
+    for (const org of allOrgs) {
+      map.set(org.id, { ...org, children: [] });
+    }
+    for (const org of allOrgs) {
+      const node = map.get(org.id);
+      if (org.parentId && map.has(org.parentId)) {
+        map.get(org.parentId).children.push(node);
+      } else {
+        roots.push(node);
+      }
+    }
+    return roots;
   }
 
   async getChildren(parentId: string): Promise<Organization[]> {

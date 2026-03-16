@@ -4,12 +4,13 @@ import { ProtectedCategory } from './entities/protected-category.entity';
 import { SponsorClient } from './entities/sponsor-client.entity';
 import { SponsorContract } from './entities/sponsor-contract.entity';
 import { DeliveryTask } from './entities/delivery-task.entity';
+import { Organization } from '../organization/entities/organization.entity';
 import { SponsorshipService } from './sponsorship.service';
 import { SponsorshipController } from './sponsorship.controller';
 import { ReportService } from './report.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ProtectedCategory, SponsorClient, SponsorContract, DeliveryTask])],
+  imports: [TypeOrmModule.forFeature([ProtectedCategory, SponsorClient, SponsorContract, DeliveryTask, Organization])],
   controllers: [SponsorshipController],
   providers: [SponsorshipService, ReportService],
   exports: [SponsorshipService],

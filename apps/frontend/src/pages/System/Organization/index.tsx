@@ -50,10 +50,19 @@ const OrganizationPage: React.FC = () => {
   const handleEdit = (record: any) => { setEditing(record); form.setFieldsValue(record); setModalVisible(true); };
 
   const handleSubmit = async () => {
-    const values = await form.validateFields();
-    if (editing) { await orgApi.updateOrg(editing.id, values); message.success('更新成功'); }
-    else { await orgApi.createOrg(values); message.success('创建成功'); }
-    setModalVisible(false); loadTree();
+    try {
+      const values = await form.validateFields();
+      // 清理空值字段，避免空字符串触发 UUID 校验失败
+      if (!values.parentId) delete values.parentId;
+      if (editing) { await orgApi.updateOrg(editing.id, values); message.success('更新成功'); }
+      else { await orgApi.createOrg(values); message.success('创建成功'); }
+      setModalVisible(false); loadTree();
+    } catch (error: any) {
+      // form.validateFields 失败时 error.errorFields 存在，不需要额外提示
+      if (error?.errorFields) return;
+      const msg = error?.response?.data?.message || error?.data?.message || error?.message || '操作失败';
+      message.error(Array.isArray(msg) ? msg.join('; ') : msg);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -128,11 +137,23 @@ const OrganizationPage: React.FC = () => {
       <Modal title={editing ? '编辑组织' : '新增组织'} open={modalVisible} onOk={handleSubmit} onCancel={() => setModalVisible(false)} destroyOnClose>
         <Form form={form} layout="vertical">
           <Form.Item name="name" label="组织名称" rules={[{ required: true, message: '请输入组织名称' }]}><Input /></Form.Item>
-          <Form.Item name="code" label="组织编码" rules={[{ required: true, message: '请输入组织编码' }]}><Input disabled={!!editing} /></Form.Item>
+          <Form.Item name="code" label="组织编码" rules={[{ required: true, message: '请输入组织编码' }, { min: 2, message: '编码至少2个字符' }]}><Input disabled={!!editing} placeholder="至少2个字符" /></Form.Item>
           <Form.Item name="orgType" label="组织类型" rules={[{ required: true, message: '请选择组织类型' }]}>
             <Select options={Object.entries(orgTypeMap).map(([k, v]) => ({ value: Number(k), label: v }))} />
           </Form.Item>
-          <Form.Item name="parentId" label="父组织ID"><Input disabled /></Form.Item>
+          <Form.Item name="parentId" label="父组织" tooltip="留空则创建为根节点">
+            <Select allowClear placeholder="留空则为根节点" disabled={!!editing}>
+              {(function flattenTree(nodes: any[], prefix = ''): any[] {
+                return nodes.reduce((acc: any[], n: any) => {
+                  acc.push({ value: n.id, label: prefix + n.name });
+                  if (n.children?.length) acc.push(...flattenTree(n.children, prefix + '  '));
+                  return acc;
+                }, []);
+              })(treeData).map((opt: any) => (
+                <Select.Option key={opt.value} value={opt.value}>{opt.label}</Select.Option>
+              ))}
+            </Select>
+          </Form.Item>
           <Form.Item name="leader" label="负责人"><Input placeholder="请输入负责人姓名" /></Form.Item>
           <Form.Item name="phone" label="联系电话"><Input placeholder="请输入联系电话" /></Form.Item>
           <Form.Item name="address" label="地址"><Input placeholder="请输入地址" /></Form.Item>

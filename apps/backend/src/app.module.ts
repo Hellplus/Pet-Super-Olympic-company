@@ -1,8 +1,20 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { CacheModule } from '@nestjs/cache-manager';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+
+class MemoryCache {
+  private store = new Map<string, { value: any; expiry: number }>();
+  async get(key: string) { const e = this.store.get(key); if (!e) return undefined; if (e.expiry && Date.now() > e.expiry) { this.store.delete(key); return undefined; } return e.value; }
+  async set(key: string, value: any, ttl?: number) { this.store.set(key, { value, expiry: ttl ? Date.now() + ttl : 0 }); }
+  async del(key: string) { this.store.delete(key); }
+  async reset() { this.store.clear(); }
+}
+
+@Global()
+@Module({ providers: [{ provide: CACHE_MANAGER, useValue: new MemoryCache() }], exports: [CACHE_MANAGER] })
+class CacheProviderModule {}
 
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -33,7 +45,7 @@ import redisConfig from './config/redis.config';
   imports: [
     ConfigModule.forRoot({ isGlobal: true, load: [jwtConfig, redisConfig], envFilePath: ['.env.local', '.env'] }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
-    CacheModule.register({ isGlobal: true }),
+    CacheProviderModule,
     DatabaseModule,
     AuthModule, UserModule, OrganizationModule, RoleModule,
     PermissionModule, AuditLogModule, SystemModule,

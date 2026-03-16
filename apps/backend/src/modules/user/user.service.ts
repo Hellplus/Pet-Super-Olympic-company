@@ -5,6 +5,7 @@ import * as bcrypt from 'bcryptjs';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { User } from './entities/user.entity';
+import { Organization } from '../organization/entities/organization.entity';
 import { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/user.dto';
 import { PaginationDto } from '../../common/dto/pagination.dto';
 import { paginate } from '../../common/utils/pagination.util';
@@ -14,6 +15,7 @@ import { applyDataScope, DataScopeContext } from '../../common/utils/data-scope-
 export class UserService {
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(Organization) private readonly orgRepo: Repository<Organization>,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -48,7 +50,6 @@ export class UserService {
   async findAll(query: QueryUserDto, dataScope?: DataScopeContext) {
     const qb = this.userRepo
       .createQueryBuilder('entity')
-      .leftJoinAndSelect('entity.organization', 'org')
       .leftJoinAndSelect('entity.roles', 'roles');
 
     if (query.username) {
@@ -74,7 +75,7 @@ export class UserService {
   async findById(id: string) {
     const user = await this.userRepo.findOne({
       where: { id },
-      relations: ['organization', 'roles'],
+      relations: ['roles'],
     });
     if (!user) throw new NotFoundException('用户不存在');
     return user;
@@ -97,7 +98,7 @@ export class UserService {
 
     const user = await this.userRepo.findOne({
       where: { id },
-      relations: ['organization', 'roles', 'roles.rolePermissions', 'roles.rolePermissions.permission'],
+      relations: ['roles', 'roles.rolePermissions', 'roles.rolePermissions.permission'],
     });
     if (!user) return null;
 
@@ -113,6 +114,13 @@ export class UserService {
       }
     }
 
+    // 单独查组织treePath（避免Tree实体join问题）
+    let orgTreePath: string | undefined;
+    if (user.organizationId) {
+      const org = await this.orgRepo.findOne({ where: { id: user.organizationId }, select: ['id', 'treePath'] });
+      orgTreePath = org?.treePath;
+    }
+
     const userInfo = {
       id: user.id,
       username: user.username,
@@ -120,7 +128,7 @@ export class UserService {
       avatar: user.avatar,
       status: user.status,
       organizationId: user.organizationId,
-      orgTreePath: user.organization?.treePath,
+      orgTreePath,
       isSuperAdmin: user.isSuperAdmin,
       permissions: [...new Set(permissions)],
       roles: roles.map((r) => ({

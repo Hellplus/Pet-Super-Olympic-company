@@ -54,7 +54,17 @@ const ApplicationPage: React.FC = () => {
         ]}
       />
       <ModalForm title="提交入驻申请" open={modalVisible} onOpenChange={setModalVisible} modalProps={{ destroyOnClose: true }}
-        onFinish={async (values) => { await api.createApplication(values); message.success('申请已提交'); actionRef.current?.reload(); return true; }}>
+        onFinish={async (values) => {
+          try {
+            await api.createApplication(values);
+            message.success('申请已提交');
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || error?.message || '提交失败');
+            return false;
+          }
+        }}>
         <ProFormText name="branchName" label="拟设分会名称" rules={[{ required: true }]} />
         <ProFormText name="applicantName" label="申请人" rules={[{ required: true }]} />
         <ProFormText name="applicantPhone" label="联系电话" rules={[{ required: true }]} />

@@ -71,10 +71,15 @@ const RolePage: React.FC = () => {
         initialValues={editingRole || {}}
         modalProps={{ destroyOnClose: true }}
         onFinish={async (values) => {
-          if (editingRole) { await roleApi.updateRole(editingRole.id, values); message.success('更新成功'); }
-          else { await roleApi.createRole(values); message.success('创建成功'); }
-          actionRef.current?.reload();
-          return true;
+          try {
+            if (editingRole) { await roleApi.updateRole(editingRole.id, values); message.success('更新成功'); }
+            else { await roleApi.createRole(values); message.success('创建成功'); }
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || error?.message || '操作失败');
+            return false;
+          }
         }}
       >
         <ProFormText name="code" label="角色编码" rules={[{ required: true }]} disabled={!!editingRole} />

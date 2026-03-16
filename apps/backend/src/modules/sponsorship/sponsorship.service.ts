@@ -6,7 +6,7 @@ import { SponsorClient } from './entities/sponsor-client.entity';
 import { SponsorContract } from './entities/sponsor-contract.entity';
 import { DeliveryTask } from './entities/delivery-task.entity';
 import { CreateProtectedCategoryDto, CreateSponsorClientDto, CreateSponsorContractDto, QueryContractDto } from './dto/sponsorship.dto';
-import { paginate } from '../../common/utils/pagination.util';
+
 
 @Injectable()
 export class SponsorshipService {
@@ -44,10 +44,9 @@ export class SponsorshipService {
     return this.clientRepo.save(this.clientRepo.create(dto));
   }
   async findAllClients(orgId?: string) {
-    const qb = this.clientRepo.createQueryBuilder('entity').leftJoinAndSelect('entity.organization', 'org');
-    if (orgId) qb.where('entity.org_id = :o', { o: orgId });
-    qb.orderBy('entity.created_at', 'DESC');
-    return qb.getMany();
+    const where: any = {};
+    if (orgId) where.orgId = orgId;
+    return this.clientRepo.find({ where, order: { createdAt: 'DESC' } });
   }
   async updateClient(id: string, data: any) {
     const client = await this.clientRepo.findOne({ where: { id } });
@@ -98,13 +97,19 @@ export class SponsorshipService {
     return this.contractRepo.save(this.contractRepo.create({ ...dto, contractNo: no, createdBy: userId }));
   }
   async findAllContracts(query: QueryContractDto) {
-    const qb = this.contractRepo.createQueryBuilder('entity')
-      .leftJoinAndSelect('entity.organization', 'org')
-      .leftJoinAndSelect('entity.client', 'client');
-    if (query.orgId) qb.andWhere('entity.org_id = :o', { o: query.orgId });
-    if (query.status !== undefined) qb.andWhere('entity.status = :s', { s: query.status });
-    qb.orderBy('entity.created_at', 'DESC');
-    return paginate(qb, query);
+    const where: any = {};
+    if (query.orgId) where.orgId = query.orgId;
+    if (query.status !== undefined) where.status = query.status;
+    const page = (query as any).current || query.page || 1;
+    const pageSize = query.pageSize || 20;
+    const [items, total] = await this.contractRepo.findAndCount({
+      where,
+      relations: ['client'],
+      order: { createdAt: 'DESC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+    return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
   async activateContract(id: string) {
     const c = await this.contractRepo.findOneOrFail({ where: { id } });
@@ -126,7 +131,7 @@ export class SponsorshipService {
   async generateReportData(contractId: string) {
     const contract = await this.contractRepo.findOne({
       where: { id: contractId },
-      relations: ['client', 'organization'],
+      relations: ['client'],
     });
     if (!contract) throw new NotFoundException('合同不存在');
 

@@ -8,11 +8,12 @@ import { Announcement } from './entities/announcement.entity';
 import { User } from '../user/entities/user.entity';
 import { AnnouncementRead } from './entities/announcement-read.entity';
 import { DigitalAsset } from './entities/digital-asset.entity';
+import { Organization } from '../organization/entities/organization.entity';
 import { EventService } from './event.service';
 import { EventController } from './event.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Event, SopTemplate, SopTemplateTask, EventTask, Announcement, AnnouncementRead, User, DigitalAsset])],
+  imports: [TypeOrmModule.forFeature([Event, SopTemplate, SopTemplateTask, EventTask, Announcement, AnnouncementRead, User, DigitalAsset, Organization])],
   controllers: [EventController],
   providers: [EventService],
   exports: [EventService],

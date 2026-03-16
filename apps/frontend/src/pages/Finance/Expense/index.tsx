@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDigit, ProFormSelect, ProFormTextArea } from '@ant-design/pro-components';
+import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDigit, ProFormSelect, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
 import { Button, message, Tag, Space, Popconfirm, Modal, Upload, Alert, Typography, Divider } from 'antd';
 import { PlusOutlined, UploadOutlined, ExclamationCircleOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { request } from '@umijs/max';
 import * as api from '@/services/finance';
+import * as orgApi from '@/services/organization';
 
 const { Text } = Typography;
 
@@ -21,7 +22,15 @@ const ExpensePage: React.FC = () => {
   const [voucherUrl, setVoucherUrl] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  /** 预算校验 — 超预算直接拦截 */
+  const loadOrgTree = async () => {
+    try {
+      const res = await orgApi.getOrgTree();
+      const transform = (nodes: any[]): any[] =>
+        nodes?.map((n) => ({ title: n.name, value: n.id, children: n.children ? transform(n.children) : [] })) || [];
+      return transform(res.data || res || []);
+    } catch { return []; }
+  };
+
   const checkBudget = async (budgetId: string, budgetSubject: string, amount: number) => {
     if (!budgetId) return true;
     try {
@@ -34,7 +43,6 @@ const ExpensePage: React.FC = () => {
     } catch { return true; }
   };
 
-  /** 确认付款（强制凭证上传闭环） */
   const handleConfirmPayment = async () => {
     if (!voucherUrl) { message.error('必须上传银行电子回单截图才能完成付款确认！'); return; }
     setSubmitting(true);
@@ -43,6 +51,8 @@ const ExpensePage: React.FC = () => {
       message.success('付款已确认，凭证已归档');
       setPaymentModal(null); setVoucherUrl('');
       actionRef.current?.reload();
+    } catch (error: any) {
+      message.error(error?.data?.message || '付款确认失败');
     } finally { setSubmitting(false); }
   };
 
@@ -89,20 +99,26 @@ const ExpensePage: React.FC = () => {
         toolBarRender={() => [<Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => { setBudgetWarning(null); setModalVisible(true); }}>提交报销</Button>]}
       />
 
-      {/* 新建报销单 — 含预算硬拦截 */}
       <ModalForm title="提交报销/付款单" open={modalVisible} onOpenChange={(v) => { setModalVisible(v); if (!v) setBudgetWarning(null); }} modalProps={{ destroyOnClose: true }}
         onFinish={async (values) => {
-          if (values.budgetId) { const ok = await checkBudget(values.budgetId, values.budgetSubject, values.amount); if (!ok) return false; }
-          await api.createExpense(values);
-          message.success('报销单已提交');
-          actionRef.current?.reload();
-          return true;
+          try {
+            if (values.budgetId) { const ok = await checkBudget(values.budgetId, values.budgetSubject, values.amount); if (!ok) return false; }
+            await api.createExpense(values);
+            message.success('报销单已提交');
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || error?.message || '提交失败');
+            return false;
+          }
         }}>
         {budgetWarning && (
           <Alert type="error" showIcon icon={<ExclamationCircleOutlined />} message="超预算拦截"
             description={<div><p>本次报销金额 <Text strong type="danger">¥{budgetWarning.amount?.toLocaleString()}</Text> 超出预算余额 <Text strong>¥{budgetWarning.remaining?.toLocaleString()}</Text>，超支 <Text strong type="danger">¥{budgetWarning.overage?.toLocaleString()}</Text>。</p><p>请联系总部发起《超预算特批申请》后再提交。</p></div>}
             style={{ marginBottom: 16 }} />
         )}
+        <ProFormTreeSelect name="orgId" label="所属分会" rules={[{ required: true, message: '请选择所属分会' }]}
+          request={loadOrgTree} fieldProps={{ showSearch: true, treeNodeFilterProp: 'title', placeholder: '请选择所属分会' }} />
         <ProFormSelect name="expenseType" label="类型" rules={[{ required: true, message: '请选择类型' }]} valueEnum={{ REIMBURSE: '报销', PAYMENT: '付款' }} />
         <ProFormDigit name="amount" label="金额(元)" rules={[{ required: true, message: '请输入金额' }]} min={0.01} fieldProps={{ precision: 2, style: { width: '100%' } }} />
         <ProFormText name="budgetId" label="关联预算包ID" tooltip="关联预算包后将进行实时预算余额校验" placeholder="选填，关联后系统将自动扣减预算" />
@@ -110,7 +126,6 @@ const ExpensePage: React.FC = () => {
         <ProFormTextArea name="description" label="摘要说明" rules={[{ required: true, message: '请填写摘要' }]} />
       </ModalForm>
 
-      {/* 付款凭证强制上传弹窗 */}
       <Modal title={<><UploadOutlined /> 确认付款 — 强制上传银行回单</>} open={!!paymentModal} onCancel={() => setPaymentModal(null)}
         onOk={handleConfirmPayment} okText="确认付款并归档" okButtonProps={{ disabled: !voucherUrl, loading: submitting }} destroyOnClose>
         <Alert type="warning" showIcon message="付款凭证闭环核销" description="出纳在线下网银完成打款后，必须在此上传银行电子回单截图/PDF，无附件无法完结单据。" style={{ marginBottom: 16 }} />

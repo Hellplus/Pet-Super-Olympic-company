@@ -102,6 +102,42 @@ export class BranchHrController {
     return this.service.rateAssignment(id, body.rating, body.reviewComment);
   }
 
+  // --- 全量证书管理 ---
+  @Post('certificates')
+  @ApiOperation({ summary: '新增通用证书(支持专家/裁判/赛组委/地方等)' })
+  createCertificate(@Body() data: any) {
+    return this.service.createCertificate(data);
+  }
+
+  @Get('certificates')
+  @ApiOperation({ summary: '全量证书列表(支持搜索、按状态/类型筛选)' })
+  findAllCertificates(
+    @Query('expertId') expertId?: string,
+    @Query('certType') certType?: string,
+    @Query('keyword') keyword?: string,
+    @Query('status') status?: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.service.findAllCertificates({
+      expertId, certType, keyword, status,
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 20,
+    });
+  }
+
+  @Put('certificates/:id')
+  @ApiOperation({ summary: '更新证书' })
+  updateCertificate(@Param('id') id: string, @Body() data: any) {
+    return this.service.updateCertificate(id, data);
+  }
+
+  @Delete('certificates/:id')
+  @ApiOperation({ summary: '删除证书' })
+  removeCertificate(@Param('id') id: string) {
+    return this.service.removeCertificate(id);
+  }
+
   // --- 证书到期预警 ---
   @Get('cert-expiry-warnings')
   @ApiOperation({ summary: '专家证书到期预警(默认30天内)' })

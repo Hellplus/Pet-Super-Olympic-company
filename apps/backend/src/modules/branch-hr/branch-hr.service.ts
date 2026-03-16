@@ -180,6 +180,72 @@ export class BranchHrService {
     return this.assignRepo.save(a);
   }
 
+  // ====== 全量证书管理 ======
+  async createCertificate(data: Partial<ExpertCertificate>) {
+    return this.certRepo.save(this.certRepo.create(data));
+  }
+
+  async findAllCertificates(query: { expertId?: string; certType?: string; keyword?: string; status?: string; page?: number; pageSize?: number }) {
+    const page = query.page || 1;
+    const pageSize = query.pageSize || 20;
+
+    const where: any = {};
+    if (query.expertId) where.expertId = query.expertId;
+    if (query.certType) where.certType = query.certType;
+
+    const [allItems, total] = await this.certRepo.findAndCount({
+      where,
+      order: { expiryDate: 'ASC' },
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    // 手动加载专家信息（仅对有 expertId 的证书）
+    const expertIds = [...new Set(allItems.map(c => c.expertId).filter(Boolean))];
+    const experts = expertIds.length > 0
+      ? await this.expertRepo.findByIds(expertIds)
+      : [];
+    const expertMap = new Map(experts.map(e => [e.id, e]));
+
+    let items = allItems.map(c => ({
+      ...c,
+      expert: c.expertId && expertMap.get(c.expertId) ? {
+        id: expertMap.get(c.expertId)!.id,
+        name: expertMap.get(c.expertId)!.name,
+        expertType: expertMap.get(c.expertId)!.expertType,
+      } : null,
+    }));
+
+    if (query.keyword) {
+      const k = query.keyword.toLowerCase();
+      items = items.filter(c =>
+        c.certName?.toLowerCase().includes(k) ||
+        c.certNo?.toLowerCase().includes(k) ||
+        c.issuingAuthority?.toLowerCase().includes(k) ||
+        c.holderName?.toLowerCase().includes(k)
+      );
+    }
+    if (query.status === 'expired') {
+      items = items.filter(c => c.expiryDate && new Date(c.expiryDate) < new Date());
+    } else if (query.status === 'expiring') {
+      const now = new Date();
+      const future = new Date();
+      future.setDate(future.getDate() + 30);
+      items = items.filter(c => c.expiryDate && new Date(c.expiryDate) >= now && new Date(c.expiryDate) <= future);
+    } else if (query.status === 'valid') {
+      items = items.filter(c => !c.expiryDate || new Date(c.expiryDate) > new Date());
+    }
+
+    return { items, total, page, pageSize };
+  }
+
+  async updateCertificate(id: string, data: Partial<ExpertCertificate>) {
+    const cert = await this.certRepo.findOne({ where: { id } });
+    if (!cert) throw new NotFoundException('证书不存在');
+    Object.assign(cert, data);
+    return this.certRepo.save(cert);
+  }
+
   // ====== 专家资质到期预警 ======
   /** PRD: "资质证书(带到期预警)" - 查询即将到期和已过期的证书 */
   async getCertExpiryWarnings(daysAhead = 30) {
@@ -187,13 +253,24 @@ export class BranchHrService {
     const futureDate = new Date();
     futureDate.setDate(futureDate.getDate() + daysAhead);
 
-    const certs = await this.certRepo.createQueryBuilder('c')
-      .leftJoinAndSelect('c.expert', 'expert')
-      .where('c.expiry_date IS NOT NULL')
-      .andWhere('c.expiry_date <= :futureDate', { futureDate: futureDate.toISOString().slice(0, 10) })
-      .andWhere('c.deleted_at IS NULL')
-      .orderBy('c.expiry_date', 'ASC')
-      .getMany();
+    // 避免 leftJoinAndSelect 导致 databaseName 错误，使用 find 替代
+    const allCerts = await this.certRepo.find({
+      where: { isExpired: false },
+      order: { expiryDate: 'ASC' },
+    });
+
+    // 筛选有到期日期且在预警范围内的证书
+    const futureDateStr = futureDate.toISOString().slice(0, 10);
+    const certs = allCerts.filter(c =>
+      c.expiryDate && new Date(c.expiryDate).toISOString().slice(0, 10) <= futureDateStr
+    );
+
+    // 手动加载专家信息
+    const expertIds = [...new Set(certs.map(c => c.expertId).filter(Boolean))];
+    const experts = expertIds.length > 0
+      ? await this.expertRepo.findByIds(expertIds)
+      : [];
+    const expertMap = new Map(experts.map(e => [e.id, e]));
 
     const expired = certs.filter(c => new Date(c.expiryDate) < now);
     const expiringSoon = certs.filter(c => new Date(c.expiryDate) >= now);
@@ -211,12 +288,12 @@ export class BranchHrService {
       expiringSoonCount: expiringSoon.length,
       expired: expired.map(c => ({
         certId: c.id, certName: c.certName, certNo: c.certNo,
-        expertId: c.expertId, expertName: c.expert?.name,
+        expertId: c.expertId, expertName: expertMap.get(c.expertId)?.name,
         expiryDate: c.expiryDate, issuingAuthority: c.issuingAuthority,
       })),
       expiringSoon: expiringSoon.map(c => ({
         certId: c.id, certName: c.certName, certNo: c.certNo,
-        expertId: c.expertId, expertName: c.expert?.name,
+        expertId: c.expertId, expertName: expertMap.get(c.expertId)?.name,
         expiryDate: c.expiryDate, issuingAuthority: c.issuingAuthority,
         daysRemaining: Math.ceil((new Date(c.expiryDate).getTime() - now.getTime()) / 86400000),
       })),

@@ -1,10 +1,11 @@
 import React, { useRef, useState } from 'react';
-import { PageContainer, ProTable, ModalForm, ProFormText, ProFormSwitch, ProFormTextArea, ProFormDigit } from '@ant-design/pro-components';
+import { PageContainer, ProTable, ModalForm, ProFormText, ProFormSwitch, ProFormTextArea, ProFormDigit, ProFormTreeSelect } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Tag, message, Space, Popconfirm, Modal, Descriptions, Typography, Tooltip, Badge } from 'antd';
 import { PlusOutlined, StarOutlined, StarFilled, EyeOutlined, PhoneOutlined, MailOutlined, EditOutlined } from '@ant-design/icons';
 import { request } from '@umijs/max';
 import { getClients, createClient, referToHq } from '@/services/sponsorship';
+import * as orgApi from '@/services/organization';
 
 const { Text } = Typography;
 
@@ -143,6 +144,16 @@ const ClientPage: React.FC = () => {
             }}
             modalProps={{ destroyOnClose: true }}
           >
+            <ProFormTreeSelect name="orgId" label="所属分会" rules={[{ required: true, message: '请选择所属分会' }]}
+              request={async () => {
+                try {
+                  const res = await orgApi.getOrgTree();
+                  const transform = (nodes: any[]): any[] =>
+                    nodes?.map((n) => ({ title: n.name, value: n.id, children: n.children ? transform(n.children) : [] })) || [];
+                  return transform(res.data || res || []);
+                } catch { return []; }
+              }}
+              fieldProps={{ showSearch: true, treeNodeFilterProp: 'title', placeholder: '请选择所属分会' }} />
             <ProFormText name="companyName" label="客户全称" rules={[{ required: true, message: '请输入客户名称' }]}
               placeholder="公司/品牌全称" />
             <ProFormText name="contactPerson" label="联系人" placeholder="主要对接人" />

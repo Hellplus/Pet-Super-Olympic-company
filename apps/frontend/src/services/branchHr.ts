@@ -11,3 +11,7 @@ export async function deleteExpert(id: string) { return request('/branch-hr/expe
 export async function getExpertCertificates(expertId: string) { return request('/branch-hr/experts/' + expertId + '/certificates', { method: 'GET' }); }
 export async function addCertificate(expertId: string, data: any) { return request('/branch-hr/experts/' + expertId + '/certificates', { method: 'POST', data }); }
 export async function getExpertAssignments(expertId: string) { return request('/branch-hr/experts/' + expertId + '/assignments', { method: 'GET' }); }
+export async function createCertificate(data: any) { return request('/branch-hr/certificates', { method: 'POST', data }); }
+export async function getAllCertificates(params: any) { return request('/branch-hr/certificates', { method: 'GET', params }); }
+export async function updateCertificate(id: string, data: any) { return request('/branch-hr/certificates/' + id, { method: 'PUT', data }); }
+export async function deleteCertificate(id: string) { return request('/branch-hr/certificates/' + id, { method: 'DELETE' }); }
