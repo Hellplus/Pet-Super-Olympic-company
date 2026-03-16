@@ -280,7 +280,7 @@ export class ExportService {
           email: row.email ? String(row.email) : null,
           nationality: row.nationality ? String(row.nationality) : null,
           bio: row.bio ? String(row.bio) : null,
-        });
+        } as any);
         await this.expertRepo.save(expert);
         success++;
       } catch (e: any) {
@@ -318,7 +318,7 @@ export class ExportService {
           issuingAuthority: row.issuingAuthority ? String(row.issuingAuthority) : null,
           issueDate: row.issueDate ? new Date(row.issueDate) : null,
           expiryDate: row.expiryDate ? new Date(row.expiryDate) : null,
-        });
+        } as any);
         await this.certRepo.save(cert);
         success++;
       } catch (e: any) {
@@ -356,7 +356,7 @@ export class ExportService {
           revenueDate: row.revenueDate ? new Date(row.revenueDate) : new Date(),
           hqCommissionRate: hqRate,
           hqCommissionAmount: amount * hqRate / 100,
-        });
+        } as any);
         await this.revenueRepo.save(record);
         success++;
       } catch (e: any) {
