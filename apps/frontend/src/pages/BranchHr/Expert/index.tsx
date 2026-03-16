@@ -4,6 +4,8 @@ import { Button, message, Popconfirm, Space, Tag, Rate, Modal, Table, Empty } fr
 import { PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/branchHr';
+import ImportExport from '@/components/ImportExport';
+import { exportExperts } from '@/services/export';
 
 const typeMap: Record<string, { text: string; color: string }> = {
   JUDGE: { text: '国际裁判', color: 'blue' }, VET: { text: '权威兽医', color: 'green' },
@@ -90,6 +92,7 @@ const ExpertPage: React.FC = () => {
           return { data: res.data?.items || [], total: res.data?.total || 0, success: true };
         }}
         toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportExperts} importType="experts" onImportSuccess={() => actionRef.current?.reload()} />,
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalVisible(true); }}>新增专家</Button>,
         ]}
       />

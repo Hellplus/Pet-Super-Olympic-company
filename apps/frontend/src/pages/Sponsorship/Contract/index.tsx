@@ -5,6 +5,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/sponsorship';
 import * as orgApi from '@/services/organization';
+import ImportExport from '@/components/ImportExport';
+import { exportContracts } from '@/services/export';
 
 const statusMap: Record<number, { text: string; color: string }> = {
   0: { text: '草稿', color: 'default' }, 1: { text: '生效', color: 'green' }, 2: { text: '已完结', color: 'cyan' }, 3: { text: '已终止', color: 'red' },
@@ -71,6 +73,7 @@ const ContractPage: React.FC = () => {
           return { data: res.data?.items || [], total: res.data?.total || 0, success: true };
         }}
         toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportContracts} onImportSuccess={() => actionRef.current?.reload()} />,
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>新建合同</Button>,
         ]}
       />

@@ -6,6 +6,8 @@ import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { request } from '@umijs/max';
 import * as api from '@/services/finance';
 import * as orgApi from '@/services/organization';
+import ImportExport from '@/components/ImportExport';
+import { exportExpenses } from '@/services/export';
 
 const { Text } = Typography;
 
@@ -96,7 +98,10 @@ const ExpensePage: React.FC = () => {
           const res = await api.getExpenses({ ...params, page: params.current, pageSize: params.pageSize });
           return { data: res.data?.items || [], total: res.data?.total || 0, success: true };
         }}
-        toolBarRender={() => [<Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => { setBudgetWarning(null); setModalVisible(true); }}>提交报销</Button>]}
+        toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportExpenses} onImportSuccess={() => actionRef.current?.reload()} />,
+          <Button key="create" type="primary" icon={<PlusOutlined />} onClick={() => { setBudgetWarning(null); setModalVisible(true); }}>提交报销</Button>,
+        ]}
       />
 
       <ModalForm title="提交报销/付款单" open={modalVisible} onOpenChange={(v) => { setModalVisible(v); if (!v) setBudgetWarning(null); }} modalProps={{ destroyOnClose: true }}

@@ -5,6 +5,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/finance';
 import * as orgApi from '@/services/organization';
+import ImportExport from '@/components/ImportExport';
+import { exportRevenues } from '@/services/export';
 
 const RevenuePage: React.FC = () => {
   const actionRef = useRef<ActionType>();
@@ -38,6 +40,7 @@ const RevenuePage: React.FC = () => {
           return { data: res.data?.items || [], total: res.data?.total || 0, success: true };
         }}
         toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportRevenues} importType="revenues" onImportSuccess={() => actionRef.current?.reload()} />,
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>录入收款</Button>,
         ]}
       />

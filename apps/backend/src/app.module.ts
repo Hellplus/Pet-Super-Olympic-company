@@ -30,6 +30,7 @@ import { SponsorshipModule } from './modules/sponsorship/sponsorship.module';
 import { EventModule } from './modules/event/event.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { ExportModule } from './modules/export/export.module';
 
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { PermissionsGuard } from './common/guards/permissions.guard';
@@ -50,7 +51,7 @@ import redisConfig from './config/redis.config';
     AuthModule, UserModule, OrganizationModule, RoleModule,
     PermissionModule, AuditLogModule, SystemModule,
     BranchHrModule, FinanceModule, SponsorshipModule, EventModule,
-    DashboardModule, UploadModule,
+    DashboardModule, UploadModule, ExportModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },

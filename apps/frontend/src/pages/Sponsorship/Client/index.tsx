@@ -6,6 +6,8 @@ import { PlusOutlined, StarOutlined, StarFilled, EyeOutlined, PhoneOutlined, Mai
 import { request } from '@umijs/max';
 import { getClients, createClient, referToHq } from '@/services/sponsorship';
 import * as orgApi from '@/services/organization';
+import ImportExport from '@/components/ImportExport';
+import { exportClients } from '@/services/export';
 
 const { Text } = Typography;
 
@@ -130,6 +132,7 @@ const ClientPage: React.FC = () => {
           }
         }}
         toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportClients} onImportSuccess={() => actionRef.current?.reload()} />,
           <ModalForm
             key="add"
             title="新增客户"

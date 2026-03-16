@@ -5,6 +5,8 @@ import { PlusOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/branchHr';
 import * as orgApi from '@/services/organization';
+import ImportExport from '@/components/ImportExport';
+import { exportCertificates } from '@/services/export';
 
 const certTypeMap: Record<string, { text: string; color: string }> = {
   expert: { text: '专家证书', color: 'blue' },
@@ -110,6 +112,7 @@ const CertificatePage: React.FC = () => {
           } catch { return { data: [], total: 0, success: false }; }
         }}
         toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportCertificates} importType="certificates" onImportSuccess={() => actionRef.current?.reload()} />,
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setAddVisible(true)}>添加证书</Button>,
         ]}
       />

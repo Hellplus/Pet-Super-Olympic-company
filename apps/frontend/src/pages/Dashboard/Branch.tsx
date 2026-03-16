@@ -1,13 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Col, Row, Statistic, Table, Tag, Progress, Empty, Spin, List } from 'antd';
+import { Card, Col, Row, Statistic, Tag, Progress, Empty, Spin, List } from 'antd';
 import {
   DollarOutlined, TrophyOutlined, FundOutlined,
   CheckCircleOutlined, ClockCircleOutlined,
 } from '@ant-design/icons';
-import { Typography } from 'antd';
+import { Column, Line } from '@ant-design/charts';
 import { getBranchStats } from '../../services/dashboard';
-
-const { Text } = Typography;
 
 const BranchDashboard: React.FC = () => {
   const [data, setData] = useState<any>(null);
@@ -26,95 +24,83 @@ const BranchDashboard: React.FC = () => {
 
   const totalRevenue = revenueStats.reduce((s: number, r: any) => s + Number(r.totalAmount || 0), 0);
 
-  const budgetColumns = [
-    { title: '赛事名称', dataIndex: 'eventName', key: 'eventName', ellipsis: true },
-    { title: '总预算', dataIndex: 'totalAmount', key: 'totalAmount',
-      render: (v: any) => `￥${Number(v || 0).toLocaleString()}` },
-    { title: '已使用', dataIndex: 'usedAmount', key: 'usedAmount',
-      render: (v: any) => `￥${Number(v || 0).toLocaleString()}` },
-    { title: '消耗健康度', key: 'health',
-      render: (_: any, r: any) => {
-        const total = Number(r.totalAmount || 1);
-        const used = Number(r.usedAmount || 0);
-        const pct = Math.round((used / total) * 100);
-        return <Progress percent={pct} size="small"
-          status={pct > 90 ? 'exception' : pct > 70 ? 'active' : 'normal'}
-          strokeColor={pct > 90 ? '#f5222d' : pct > 70 ? '#faad14' : '#52c41a'} />;
-      }},
-  ];
+  // 月度收入柱状图
+  const revenueChartData = revenueStats.map((r: any) => ({
+    month: r.month, value: Number(r.totalAmount || 0),
+  }));
 
-  const eventColumns = [
-    { title: '赛事名称', dataIndex: 'name', key: 'name', ellipsis: true },
-    { title: '赛事日期', dataIndex: 'eventDate', key: 'eventDate',
-      render: (v: any) => v ? new Date(v).toLocaleDateString('zh-CN') : '-' },
-    { title: '状态', dataIndex: 'status', key: 'status',
-      render: (v: any) => {
-        const map: Record<string, { color: string; text: string }> = {
-          draft: { color: 'default', text: '草稿' },
-          preparing: { color: 'processing', text: '筹备中' },
-          ongoing: { color: 'success', text: '进行中' },
-          completed: { color: 'default', text: '已完成' },
-          cancelled: { color: 'error', text: '已取消' },
-        };
-        const s = map[v] || { color: 'default', text: v };
-        return <Tag color={s.color}>{s.text}</Tag>;
-      }},
-    { title: 'SOP进度', dataIndex: 'progress', key: 'progress',
-      render: (v: any) => <Progress percent={Number(v || 0)} size="small" /> },
-  ];
+  // 预算消耗健康度数据
+  const budgetChartData = budgetStats.map((b: any) => ({
+    name: b.eventName || '未命名赛事',
+    totalAmount: Number(b.totalAmount || 0),
+    usedAmount: Number(b.usedAmount || 0),
+    pct: Number(b.totalAmount) > 0 ? Math.round(Number(b.usedAmount) / Number(b.totalAmount) * 100) : 0,
+  }));
 
-  const revenueColumns = [
-    { title: '月份', dataIndex: 'month', key: 'month' },
-    { title: '收入', dataIndex: 'totalAmount', key: 'totalAmount',
-      render: (v: any) => <Text strong>￥{Number(v || 0).toLocaleString()}</Text> },
-  ];
+  const eventStatusMap: Record<string, { color: string; text: string }> = {
+    draft: { color: 'default', text: '草稿' },
+    preparing: { color: 'processing', text: '筹备中' },
+    ongoing: { color: 'success', text: '进行中' },
+    completed: { color: 'default', text: '已完成' },
+    cancelled: { color: 'error', text: '已取消' },
+  };
 
   return (
     <div>
-      {/* 核心指标 */}
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
-          <Card>
-            <Statistic title="赞助合同总数" value={Number(sponsorStats.contractCount || 0)}
-              prefix={<FundOutlined />} />
-          </Card>
+          <Card><Statistic title="赞助合同总数" value={Number(sponsorStats.contractCount || 0)} prefix={<FundOutlined />} /></Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card>
-            <Statistic title="招商总额" value={Number(sponsorStats.totalAmount || 0)}
-              precision={2} prefix={<DollarOutlined />} suffix="元"
-              valueStyle={{ color: '#cf1322' }} />
-          </Card>
+          <Card><Statistic title="招商总额" value={Number(sponsorStats.totalAmount || 0)} precision={2} prefix={<DollarOutlined />} suffix="元" valueStyle={{ color: '#cf1322' }} /></Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card>
-            <Statistic title="累计收入" value={totalRevenue}
-              precision={2} prefix={<CheckCircleOutlined />} suffix="元"
-              valueStyle={{ color: '#3f8600' }} />
-          </Card>
+          <Card><Statistic title="累计收入" value={totalRevenue} precision={2} prefix={<CheckCircleOutlined />} suffix="元" valueStyle={{ color: '#3f8600' }} /></Card>
         </Col>
       </Row>
 
-      {/* 第二行 */}
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
           <Card title="预算消耗健康度" size="small">
-            <Table dataSource={budgetStats} columns={budgetColumns}
-              rowKey="eventName" size="small" pagination={false} scroll={{ y: 250 }} />
+            {budgetChartData.length > 0 ? (
+              <Column data={budgetChartData} xField="name" yField="pct" height={280}
+                color={(datum: any) => datum.pct > 90 ? '#f5222d' : datum.pct > 70 ? '#faad14' : '#52c41a'}
+                label={{ position: 'top', formatter: (datum: any) => `${datum.pct}%` }}
+                yAxis={{ label: { formatter: (v: string) => `${v}%` }, max: 100 }}
+                meta={{ pct: { alias: '消耗比例(%)' } }}
+                tooltip={{ formatter: (datum: any) => ({ name: datum.name, value: `已用 ${datum.pct}%（¥${datum.usedAmount.toLocaleString()} / ¥${datum.totalAmount.toLocaleString()}）` }) }} />
+            ) : <Empty description="暂无预算数据" />}
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="赛事任务进度" size="small">
-            <Table dataSource={eventProgress} columns={eventColumns}
-              rowKey="id" size="small" pagination={false} scroll={{ y: 250 }} />
+          <Card title="月度收入趋势" size="small">
+            {revenueChartData.length > 0 ? (
+              <Line data={revenueChartData} xField="month" yField="value" height={280}
+                color="#1890ff"
+                point={{ size: 4, shape: 'circle' }}
+                yAxis={{ label: { formatter: (v: string) => `${(Number(v) / 10000).toFixed(0)}万` } }}
+                tooltip={{ formatter: (datum: any) => ({ name: '月收入', value: `¥${Number(datum.value).toLocaleString()}` }) }}
+                smooth />
+            ) : <Empty description="暂无收入数据" />}
           </Card>
         </Col>
       </Row>
 
-      {/* 第三行 */}
-      <Card title="月度收入趋势" size="small" style={{ marginTop: 16 }}>
-        <Table dataSource={revenueStats} columns={revenueColumns}
-          rowKey="month" size="small" pagination={false} />
+      <Card title="赛事任务进度" size="small" style={{ marginTop: 16 }}>
+        {eventProgress.length > 0 ? (
+          <List dataSource={eventProgress}
+            renderItem={(item: any) => {
+              const s = eventStatusMap[item.status] || { color: 'default', text: item.status };
+              return (
+                <List.Item extra={<Progress percent={Number(item.progress || 0)} size="small" style={{ width: 150 }} />}>
+                  <List.Item.Meta
+                    avatar={<TrophyOutlined style={{ fontSize: 20, color: '#1890ff' }} />}
+                    title={<>{item.name} <Tag color={s.color}>{s.text}</Tag></>}
+                    description={item.eventDate ? `赛事日期：${new Date(item.eventDate).toLocaleDateString('zh-CN')}` : '日期待定'} />
+                </List.Item>
+              );
+            }} />
+        ) : <Empty description="暂无赛事数据" />}
       </Card>
     </div>
   );

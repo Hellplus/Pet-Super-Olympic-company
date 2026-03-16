@@ -5,6 +5,8 @@ import { PlusOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import * as api from '@/services/event';
 import * as orgApi from '@/services/organization';
+import ImportExport from '@/components/ImportExport';
+import { exportEvents } from '@/services/export';
 
 const statusMap: Record<number, { text: string; color: string }> = {
   0: { text: '筹备中', color: 'processing' }, 1: { text: '进行中', color: 'orange' },
@@ -50,6 +52,7 @@ const EventListPage: React.FC = () => {
           return { data: res.data?.items || [], total: res.data?.total || 0, success: true };
         }}
         toolBarRender={() => [
+          <ImportExport key="ie" exportFn={exportEvents} onImportSuccess={() => actionRef.current?.reload()} />,
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setModalVisible(true)}>创建赛事</Button>,
         ]}
       />
