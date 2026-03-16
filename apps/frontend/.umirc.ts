@@ -27,10 +27,32 @@ export default defineConfig({
       redirect: '/dashboard',
     },
     {
+      path: '/account/settings',
+      component: './Account/Settings',
+      name: '个人中心',
+      hideInMenu: true,
+    },
+    {
+      path: '/exception/403',
+      component: './Exception/403',
+      layout: false,
+    },
+    {
+      path: '/exception/500',
+      component: './Exception/500',
+      layout: false,
+    },
+    {
       name: '工作台',
       path: '/dashboard',
       component: './Dashboard',
       icon: 'DashboardOutlined',
+    },
+    {
+      name: '待办中心',
+      path: '/todo-center',
+      component: './Dashboard/TodoCenter',
+      icon: 'BellOutlined',
     },
     {
       name: '系统管理',
@@ -93,6 +115,11 @@ export default defineConfig({
         { name: 'SOP进度矩阵', path: '/event/sop-progress', component: './Event/SopProgress' },
         { name: 'IP数字资产', path: '/event/digital-asset', component: './Event/DigitalAsset' },
       ],
+    },
+    {
+      path: '*',
+      component: './Exception/404',
+      layout: false,
     },
   ],
 });

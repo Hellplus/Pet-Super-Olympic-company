@@ -14,6 +14,8 @@ import { User } from '../user/entities/user.entity';
 import { Organization } from '../organization/entities/organization.entity';
 import { SettlementBill } from '../finance/entities/settlement-bill.entity';
 import { Announcement } from '../event/entities/announcement.entity';
+import { AnnouncementRead } from '../event/entities/announcement-read.entity';
+import { ExpertCertificate } from '../branch-hr/entities/expert-certificate.entity';
 
 @Injectable()
 export class DashboardService {
@@ -164,6 +166,115 @@ export class DashboardService {
       unreconciledExpenses,
       budgetHealth,
     };
+  }
+
+  /** 我的待办 + 消息中心 */
+  async getMyTodos(userId: string, orgId: string, isSuperAdmin: boolean) {
+    const todos: any[] = [];
+
+    // 1. 待审批的报销单（超管看全部，否则看本组织）
+    const expenseQb = this.expenseRepo.createQueryBuilder('e')
+      .select(['e.id', 'e.expenseNo', 'e.budgetSubject', 'e.amount', 'e.applicantName', 'e.createdAt'])
+      .where('e.deletedAt IS NULL')
+      .andWhere('e.status = :s', { s: 1 });
+    if (!isSuperAdmin) expenseQb.andWhere('e.orgId = :orgId', { orgId });
+    const pendingExpenses = await expenseQb.orderBy('e.createdAt', 'DESC').take(20).getMany();
+    pendingExpenses.forEach(e => todos.push({
+      type: 'expense', title: `报销单待审批: ${e.expenseNo}`,
+      description: `${e.applicantName} 申请 ¥${e.amount} - ${e.budgetSubject || ''}`,
+      link: '/finance/expense', time: e.createdAt, id: e.id,
+    }));
+
+    // 2. 待审批的预算包
+    const budgetQb = this.budgetRepo.createQueryBuilder('b')
+      .select(['b.id', 'b.eventName', 'b.totalBudget', 'b.createdAt'])
+      .where('b.deletedAt IS NULL')
+      .andWhere('b.status = :s', { s: 0 });
+    if (!isSuperAdmin) budgetQb.andWhere('b.orgId = :orgId', { orgId });
+    const pendingBudgets = await budgetQb.orderBy('b.createdAt', 'DESC').take(10).getMany();
+    pendingBudgets.forEach(b => todos.push({
+      type: 'budget', title: `预算包待审批: ${b.eventName}`,
+      description: `预算总额 ¥${b.totalBudget}`,
+      link: '/finance/budget', time: b.createdAt, id: b.id,
+    }));
+
+    // 3. 待审批的分会入驻申请
+    if (isSuperAdmin) {
+      const pendingApps = await this.branchAppRepo.find({
+        where: { status: 0 },
+        order: { createdAt: 'DESC' },
+        take: 10,
+      });
+      pendingApps.forEach(a => todos.push({
+        type: 'application', title: `分会入驻待审批: ${a.branchName}`,
+        description: `申请人: ${a.applicantName} - ${a.province}${a.city}`,
+        link: '/branch-hr/application', time: a.createdAt, id: a.id,
+      }));
+    }
+
+    // 4. 我负责的逾期赛事任务
+    const overdueTasks = await this.taskRepo.createQueryBuilder('t')
+      .select(['t.id', 't.taskName', 't.deadline', 't.createdAt'])
+      .leftJoin('t.event', 'event')
+      .addSelect('event.eventName')
+      .where('t.deletedAt IS NULL')
+      .andWhere('t.status IN (:...statuses)', { statuses: [0, 1] })
+      .andWhere('t.deadline < NOW()')
+      .andWhere('t.assigneeId = :userId', { userId })
+      .orderBy('t.deadline', 'ASC')
+      .take(20)
+      .getMany();
+    overdueTasks.forEach(t => todos.push({
+      type: 'task_overdue', title: `赛事任务逾期: ${t.taskName}`,
+      description: `截止日期: ${t.deadline}`,
+      link: '/event/sop-progress', time: t.createdAt, id: t.id,
+    }));
+
+    // 5. 未缴清算账单
+    const unpaidSettlements = await this.settlementRepo.createQueryBuilder('s')
+      .select(['s.id', 's.settlementPeriod', 's.totalCommission', 's.createdAt'])
+      .where('s.deletedAt IS NULL')
+      .andWhere('s.status = :s', { s: 0 });
+    if (!isSuperAdmin) unpaidSettlements.andWhere('s.orgId = :orgId', { orgId });
+    const settlements = await unpaidSettlements.orderBy('s.createdAt', 'DESC').take(10).getMany();
+    settlements.forEach(s => todos.push({
+      type: 'settlement', title: `清算账单待缴款: ${s.settlementPeriod}`,
+      description: `应缴金额 ¥${s.totalCommission}`,
+      link: '/finance/settlement', time: s.createdAt, id: s.id,
+    }));
+
+    // 6. 即将到期的证书（30天内）
+    const certWarnings = await this.expertRepo.manager.query(`
+      SELECT c.id, c.cert_no as "certNo", c.issuer_name as "issuerName",
+             c.expiry_date as "expiryDate", c.created_at as "createdAt",
+             e.name as "expertName"
+      FROM biz_expert_certificate c
+      LEFT JOIN biz_expert e ON c.expert_id = e.id
+      WHERE c.deleted_at IS NULL
+        AND c.expiry_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+      ORDER BY c.expiry_date ASC LIMIT 10
+    `);
+    certWarnings.forEach((c: any) => todos.push({
+      type: 'cert_warning', title: `证书即将到期: ${c.certNo}`,
+      description: `${c.expertName || ''} - ${c.issuerName || ''} 到期日: ${c.expiryDate}`,
+      link: '/branch-hr/cert-warning', time: c.createdAt, id: c.id,
+    }));
+
+    // 按时间排序
+    todos.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    // 统计
+    const summary = {
+      pendingExpenses: pendingExpenses.length,
+      pendingBudgets: pendingBudgets.length,
+      pendingApplications: isSuperAdmin ? (await this.branchAppRepo.count({ where: { status: 0 } })) : 0,
+      overdueTasks: overdueTasks.length,
+      unpaidSettlements: settlements.length,
+      certWarnings: certWarnings.length,
+      total: todos.length,
+    };
+
+    return { todos, summary };
   }
 
   /** 地方分会大屏 */

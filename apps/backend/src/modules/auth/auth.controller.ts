@@ -1,9 +1,10 @@
-import { Controller, Post, Get, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { UserService } from '../user/user.service';
 import { LoginDto, RefreshTokenDto, ChangePasswordDto } from './dto/login.dto';
+import { UpdateProfileDto } from './dto/update-profile.dto';
 import { Public, CurrentUser } from '../../common/decorators';
 
 @ApiTags('认证')
@@ -19,6 +20,16 @@ export class AuthController {
   @ApiOperation({ summary: '获取当前用户信息' })
   async getProfile(@CurrentUser('id') userId: string) {
     return this.userService.findByIdWithPermissions(userId);
+  }
+
+  @Put('profile')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: '更新个人信息' })
+  async updateProfile(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.userService.update(userId, dto, userId);
   }
 
   @Public()

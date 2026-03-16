@@ -32,4 +32,10 @@ export class DashboardController {
   async getBranch(@CurrentUser('organizationId') orgId: string) {
     return this.dashboardService.getBranchStats(orgId);
   }
+
+  @Get('my-todos')
+  @ApiOperation({ summary: '我的待办事项和消息中心' })
+  async getMyTodos(@CurrentUser() user: any) {
+    return this.dashboardService.getMyTodos(user.id, user.organizationId, user.isSuperAdmin);
+  }
 }

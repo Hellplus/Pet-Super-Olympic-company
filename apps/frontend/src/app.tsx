@@ -1,7 +1,7 @@
 import React from 'react';
 import { RequestConfig, RunTimeLayoutConfig, history } from '@umijs/max';
-import { message, Dropdown, Avatar, Space, Typography } from 'antd';
-import { UserOutlined, LogoutOutlined } from '@ant-design/icons';
+import { message, Dropdown, Avatar, Space, Typography, Badge, Tooltip } from 'antd';
+import { UserOutlined, LogoutOutlined, SettingOutlined, BellOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -84,14 +84,26 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     if (!user) return null;
     const menuItems = [
       { key: 'profile', icon: <UserOutlined />, label: user.realName || user.username },
+      { key: 'settings', icon: <SettingOutlined />, label: '个人中心' },
       { type: 'divider' as const },
       { key: 'logout', icon: <LogoutOutlined />, label: '退出登录', danger: true },
     ];
     return (
+      <Space size={16}>
+      <Tooltip title="待办中心">
+        <Badge dot>
+          <BellOutlined
+            style={{ fontSize: 18, cursor: 'pointer', color: 'rgba(0,0,0,0.65)' }}
+            onClick={() => history.push('/todo-center')}
+          />
+        </Badge>
+      </Tooltip>
       <Dropdown menu={{
         items: menuItems,
         onClick: ({ key }) => {
-          if (key === 'logout') {
+          if (key === 'settings') {
+            history.push('/account/settings');
+          } else if (key === 'logout') {
             localStorage.removeItem('accessToken');
             localStorage.removeItem('refreshToken');
             setInitialState((s: any) => ({ ...s, currentUser: null }));
@@ -107,6 +119,7 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
           </Text>
         </Space>
       </Dropdown>
+      </Space>
     );
   },
   waterMarkProps: { content: initialState?.currentUser?.realName },
