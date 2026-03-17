@@ -260,6 +260,43 @@ export class DashboardService {
       link: '/branch-hr/cert-warning', time: c.createdAt, id: c.id,
     }));
 
+    // 7. 即将到期的赞助合同（30天内）
+    const contractWarnings = await this.contractRepo.manager.query(`
+      SELECT c.id, c.contract_no as "contractNo", c.client_name as "clientName",
+             c.amount, c.end_date as "endDate", c.created_at as "createdAt",
+             c.sponsor_level as "sponsorLevel"
+      FROM biz_sponsor_contract c
+      WHERE c.deleted_at IS NULL
+        AND c.status = 1
+        AND c.end_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
+      ORDER BY c.end_date ASC LIMIT 10
+    `);
+    contractWarnings.forEach((c: any) => todos.push({
+      type: 'contract_expiry', title: `赞助合同即将到期: ${c.contractNo}`,
+      description: `${c.clientName || ''} - ¥${c.amount || 0} 到期日: ${c.endDate ? new Date(c.endDate).toLocaleDateString('zh-CN') : ''}`,
+      link: '/sponsorship/contracts', time: c.createdAt, id: c.id,
+    }));
+
+    // 8. 未读公告
+    const unreadAnnouncements = await this.announcementRepo.manager.query(`
+      SELECT a.id, a.title, a.type, a.created_at as "createdAt", a.publish_time as "publishTime"
+      FROM biz_announcement a
+      WHERE a.deleted_at IS NULL
+        AND a.status = 1
+        AND a.id NOT IN (
+          SELECT ar.announcement_id FROM biz_announcement_read ar WHERE ar.user_id = $1
+        )
+      ORDER BY a.publish_time DESC LIMIT 10
+    `, [userId]);
+    unreadAnnouncements.forEach((a: any) => {
+      const typeMap: Record<string, string> = { red_header: '红头文件', urgent: '紧急通知', normal: '普通公告' };
+      todos.push({
+        type: 'unread_announcement', title: `未读公告: ${a.title}`,
+        description: `[${typeMap[a.type] || a.type}] 发布于 ${a.publishTime ? new Date(a.publishTime).toLocaleString('zh-CN') : ''}`,
+        link: '/event/announcement', time: a.publishTime || a.createdAt, id: a.id,
+      });
+    });
+
     // 按时间排序
     todos.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
 
@@ -271,10 +308,38 @@ export class DashboardService {
       overdueTasks: overdueTasks.length,
       unpaidSettlements: settlements.length,
       certWarnings: certWarnings.length,
+      contractExpiry: contractWarnings.length,
+      unreadAnnouncements: unreadAnnouncements.length,
       total: todos.length,
     };
 
     return { todos, summary };
+  }
+
+  /** 通知计数（轻量级，用于铃铛轮询） */
+  async getNotificationCount(userId: string, orgId: string, isSuperAdmin: boolean) {
+    const counts = await this.expertRepo.manager.query(`
+      SELECT
+        (SELECT COUNT(*) FROM biz_expense_request WHERE deleted_at IS NULL AND status = 1
+          ${isSuperAdmin ? '' : 'AND org_id = $2'}) AS "pendingExpenses",
+        (SELECT COUNT(*) FROM biz_event_budget WHERE deleted_at IS NULL AND status = 0
+          ${isSuperAdmin ? '' : 'AND org_id = $2'}) AS "pendingBudgets",
+        ${isSuperAdmin ? `(SELECT COUNT(*) FROM biz_branch_application WHERE deleted_at IS NULL AND status = 0)` : '0'} AS "pendingApplications",
+        (SELECT COUNT(*) FROM biz_event_task WHERE deleted_at IS NULL AND status IN (0,1) AND deadline < NOW()
+          AND assignee_id = $1) AS "overdueTasks",
+        (SELECT COUNT(*) FROM biz_settlement_bill WHERE deleted_at IS NULL AND status = 0
+          ${isSuperAdmin ? '' : 'AND org_id = $2'}) AS "unpaidSettlements",
+        (SELECT COUNT(*) FROM biz_expert_certificate WHERE deleted_at IS NULL
+          AND expiry_date BETWEEN NOW() AND NOW() + INTERVAL '30 days') AS "certWarnings",
+        (SELECT COUNT(*) FROM biz_sponsor_contract WHERE deleted_at IS NULL AND status = 1
+          AND end_date BETWEEN NOW() AND NOW() + INTERVAL '30 days') AS "contractExpiry",
+        (SELECT COUNT(*) FROM biz_announcement WHERE deleted_at IS NULL AND status = 1
+          AND id NOT IN (SELECT announcement_id FROM biz_announcement_read WHERE user_id = $1)) AS "unreadAnnouncements"
+    `, isSuperAdmin ? [userId] : [userId, orgId]);
+
+    const c = counts[0] || {};
+    const total = Object.values(c).reduce((sum: number, v: any) => sum + Number(v || 0), 0);
+    return { ...c, total };
   }
 
   /** 地方分会大屏 */

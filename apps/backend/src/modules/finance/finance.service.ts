@@ -225,6 +225,17 @@ export class FinanceService {
     return this.approvalConfigRepo.save(this.approvalConfigRepo.create(data));
   }
 
+  async toggleApprovalConfig(id: string) {
+    const config = await this.approvalConfigRepo.findOneOrFail({ where: { id } });
+    config.status = config.status === 1 ? 0 : 1;
+    return this.approvalConfigRepo.save(config);
+  }
+
+  async deleteApprovalConfig(id: string) {
+    await this.approvalConfigRepo.softDelete(id);
+    return { success: true };
+  }
+
   async getApprovalRoute(bizType: string, amount: number) {
     const configs = await this.approvalConfigRepo.find({
       where: { bizType, status: 1 },

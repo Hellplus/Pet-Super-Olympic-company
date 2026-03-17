@@ -38,4 +38,10 @@ export class DashboardController {
   async getMyTodos(@CurrentUser() user: any) {
     return this.dashboardService.getMyTodos(user.id, user.organizationId, user.isSuperAdmin);
   }
+
+  @Get('notification-count')
+  @ApiOperation({ summary: '通知计数（轻量，供铃铛轮询）' })
+  async getNotificationCount(@CurrentUser() user: any) {
+    return this.dashboardService.getNotificationCount(user.id, user.organizationId, user.isSuperAdmin);
+  }
 }

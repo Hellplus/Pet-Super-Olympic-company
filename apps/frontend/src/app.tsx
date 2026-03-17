@@ -1,7 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { RequestConfig, RunTimeLayoutConfig, history } from '@umijs/max';
-import { message, Dropdown, Avatar, Space, Typography, Badge, Tooltip } from 'antd';
-import { UserOutlined, LogoutOutlined, SettingOutlined, BellOutlined } from '@ant-design/icons';
+import { message, Dropdown, Avatar, Space, Typography, Badge, Tooltip, List, Tag, Empty, Spin } from 'antd';
+import { UserOutlined, LogoutOutlined, SettingOutlined, BellOutlined, RightOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -77,6 +77,99 @@ export async function getInitialState() {
   return { currentUser: null };
 }
 
+/** 通知铃铛组件 - 实时轮询 + 下拉预览 */
+const NotificationBell: React.FC = () => {
+  const [count, setCount] = useState(0);
+  const [detail, setDetail] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [open, setOpen] = useState(false);
+  const timerRef = useRef<any>(null);
+
+  // 轮询获取通知计数
+  const fetchCount = useCallback(async () => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return;
+    try {
+      const res = await fetch('/api/v1/dashboard/notification-count', {
+        headers: { Authorization: 'Bearer ' + token },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const d = data?.data || data;
+        setCount(Number(d?.total) || 0);
+        setDetail(d);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchCount();
+    timerRef.current = setInterval(fetchCount, 60000); // 60秒轮询
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [fetchCount]);
+
+  const items = [];
+  if (detail) {
+    const entries = [
+      { key: 'pendingExpenses', label: '待审批报销', color: 'orange', link: '/finance/expense' },
+      { key: 'pendingBudgets', label: '待审批预算', color: 'blue', link: '/finance/budget' },
+      { key: 'pendingApplications', label: '入驻待审', color: 'purple', link: '/branch-hr/application' },
+      { key: 'overdueTasks', label: '逾期任务', color: 'red', link: '/event/sop-progress' },
+      { key: 'unpaidSettlements', label: '清算待缴', color: 'volcano', link: '/finance/settlement' },
+      { key: 'certWarnings', label: '证书预警', color: 'gold', link: '/branch-hr/cert-warning' },
+      { key: 'contractExpiry', label: '合同到期', color: 'magenta', link: '/sponsorship/contracts' },
+      { key: 'unreadAnnouncements', label: '未读公告', color: 'cyan', link: '/event/announcement' },
+    ];
+    entries.forEach((e) => {
+      const val = Number(detail[e.key]) || 0;
+      if (val > 0) {
+        items.push({
+          key: e.key,
+          label: (
+            <div
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minWidth: 200, padding: '4px 0' }}
+              onClick={() => { history.push(e.link); setOpen(false); }}
+            >
+              <span><Tag color={e.color} style={{ marginRight: 4 }}>{e.label}</Tag></span>
+              <Badge count={val} style={{ marginLeft: 8 }} />
+            </div>
+          ),
+        });
+      }
+    });
+  }
+  items.push({ type: 'divider' as const, key: 'divider' });
+  items.push({
+    key: 'viewAll',
+    label: (
+      <div
+        style={{ textAlign: 'center', color: '#1890ff', cursor: 'pointer' }}
+        onClick={() => { history.push('/todo-center'); setOpen(false); }}
+      >
+        查看全部待办 <RightOutlined />
+      </div>
+    ),
+  });
+
+  return (
+    <Dropdown
+      menu={{ items }}
+      trigger={['click']}
+      open={open}
+      onOpenChange={setOpen}
+      placement="bottomRight"
+    >
+      <Tooltip title={count > 0 ? `${count} 项待处理` : '暂无待办'}>
+        <Badge count={count} size="small" offset={[-2, 2]}>
+          <BellOutlined
+            style={{ fontSize: 18, cursor: 'pointer', color: count > 0 ? '#1890ff' : 'rgba(0,0,0,0.45)' }}
+          />
+        </Badge>
+      </Tooltip>
+    </Dropdown>
+  );
+};
+
 // 布局配置
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => ({
   rightContentRender: () => {
@@ -90,35 +183,28 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     ];
     return (
       <Space size={16}>
-      <Tooltip title="待办中心">
-        <Badge dot>
-          <BellOutlined
-            style={{ fontSize: 18, cursor: 'pointer', color: 'rgba(0,0,0,0.65)' }}
-            onClick={() => history.push('/todo-center')}
-          />
-        </Badge>
-      </Tooltip>
-      <Dropdown menu={{
-        items: menuItems,
-        onClick: ({ key }) => {
-          if (key === 'settings') {
-            history.push('/account/settings');
-          } else if (key === 'logout') {
-            localStorage.removeItem('accessToken');
-            localStorage.removeItem('refreshToken');
-            setInitialState((s: any) => ({ ...s, currentUser: null }));
-            history.push('/login');
-            message.success('已退出登录');
-          }
-        },
-      }}>
-        <Space style={{ cursor: 'pointer', padding: '0 12px' }}>
-          <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
-          <Text style={{ maxWidth: 100, color: 'rgba(0,0,0,0.65)' }} ellipsis>
-            {user.realName || user.username}
-          </Text>
-        </Space>
-      </Dropdown>
+        <NotificationBell />
+        <Dropdown menu={{
+          items: menuItems,
+          onClick: ({ key }) => {
+            if (key === 'settings') {
+              history.push('/account/settings');
+            } else if (key === 'logout') {
+              localStorage.removeItem('accessToken');
+              localStorage.removeItem('refreshToken');
+              setInitialState((s: any) => ({ ...s, currentUser: null }));
+              history.push('/login');
+              message.success('已退出登录');
+            }
+          },
+        }}>
+          <Space style={{ cursor: 'pointer', padding: '0 12px' }}>
+            <Avatar size="small" icon={<UserOutlined />} style={{ backgroundColor: '#1890ff' }} />
+            <Text style={{ maxWidth: 100, color: 'rgba(0,0,0,0.65)' }} ellipsis>
+              {user.realName || user.username}
+            </Text>
+          </Space>
+        </Dropdown>
       </Space>
     );
   },

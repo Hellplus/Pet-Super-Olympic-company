@@ -90,6 +90,14 @@ export class FinanceController {
   @Post('approval-configs')
   upsertApprovalConfig(@Body() data: any) { return this.service.upsertApprovalConfig(data); }
 
+  @Put('approval-configs/:id/toggle')
+  @ApiOperation({ summary: '启用/停用审批规则' })
+  toggleApprovalConfig(@Param('id') id: string) { return this.service.toggleApprovalConfig(id); }
+
+  @Post('approval-configs/:id/delete')
+  @ApiOperation({ summary: '删除审批规则' })
+  deleteApprovalConfig(@Param('id') id: string) { return this.service.deleteApprovalConfig(id); }
+
   @Post('budget-check')
   @ApiOperation({ summary: '预算余额预检（前端实时校验用）' })
   async budgetCheck(@Body() dto: any) {
