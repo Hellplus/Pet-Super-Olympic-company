@@ -69,7 +69,9 @@ const ApprovalConfigPage: React.FC = () => {
     {
       title: '审批级别', width: 250,
       render: (_: any, r: any) => {
-        const levels = r.approvalLevels || [];
+        let levels = r.approvalLevels || [];
+        if (typeof levels === 'string') { try { levels = JSON.parse(levels); } catch { levels = []; } }
+        if (!Array.isArray(levels)) levels = [];
         if (levels.length === 0) return <Tag>未配置</Tag>;
         return (
           <Space>
@@ -138,7 +140,8 @@ const ApprovalConfigPage: React.FC = () => {
         pagination={false}
         request={async () => {
           const res = await request('/finance/approval-configs');
-          return { data: res?.data || res || [], success: true };
+          const list = Array.isArray(res?.data) ? res.data : Array.isArray(res) ? res : [];
+          return { data: list, success: true };
         }}
         toolBarRender={() => [
           <Button type="primary" icon={<PlusOutlined />} onClick={() => { setEditing(null); setModalVisible(true); }}>

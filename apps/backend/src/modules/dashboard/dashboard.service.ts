@@ -262,10 +262,12 @@ export class DashboardService {
 
     // 7. 即将到期的赞助合同（30天内）
     const contractWarnings = await this.contractRepo.manager.query(`
-      SELECT c.id, c.contract_no as "contractNo", c.client_name as "clientName",
+      SELECT c.id, c.contract_no as "contractNo",
+             COALESCE(cl.company_name, '') as "clientName",
              c.amount, c.end_date as "endDate", c.created_at as "createdAt",
              c.sponsor_level as "sponsorLevel"
       FROM biz_sponsor_contract c
+      LEFT JOIN biz_sponsor_client cl ON c.client_id = cl.id
       WHERE c.deleted_at IS NULL
         AND c.status = 1
         AND c.end_date BETWEEN NOW() AND NOW() + INTERVAL '30 days'
@@ -443,14 +445,14 @@ export class DashboardService {
       ORDER BY "usageRate" DESC
     `);
 
-    // 4. 专家资源排行
+    // 4. 专家资源排行（通过调度记录关联组织）
     const expertRanking = await this.expertRepo.manager.query(`
-      SELECT e.org_id as "orgId", o.name as "orgName",
-             COUNT(*) as "expertCount"
-      FROM biz_expert e
-      LEFT JOIN sys_organization o ON e.org_id = o.id
-      WHERE e.deleted_at IS NULL
-      GROUP BY e.org_id, o.name
+      SELECT a.org_id as "orgId", o.name as "orgName",
+             COUNT(DISTINCT a.expert_id) as "expertCount"
+      FROM biz_expert_assignment a
+      LEFT JOIN sys_organization o ON a.org_id = o.id
+      WHERE a.deleted_at IS NULL
+      GROUP BY a.org_id, o.name
       ORDER BY "expertCount" DESC
     `);
 
