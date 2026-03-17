@@ -116,10 +116,5 @@ export default defineConfig({
         { name: 'IP数字资产', path: '/event/digital-asset', component: './Event/DigitalAsset' },
       ],
     },
-    {
-      path: '*',
-      component: './Exception/404',
-      layout: false,
-    },
   ],
 });

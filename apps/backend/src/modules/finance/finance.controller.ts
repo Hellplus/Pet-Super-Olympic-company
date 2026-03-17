@@ -45,8 +45,8 @@ export class FinanceController {
 
   @Post('budgets/:id/approve')
   @ApiOperation({ summary: '审批预算包' })
-  approveBudget(@Param('id') id: string, @Body() body: { approve: boolean }) {
-    return this.service.approveBudget(id, body.approve);
+  approveBudget(@Param('id') id: string, @Body() body: { approve: boolean; opinion?: string }, @CurrentUser('id') userId: string, @CurrentUser('realName') userName: string) {
+    return this.service.approveBudget(id, body.approve, userId, userName, body.opinion);
   }
 
   // --- 报销 ---
@@ -60,9 +60,21 @@ export class FinanceController {
   findAllExpenses(@Query() query: QueryExpenseDto) { return this.service.findAllExpenses(query); }
 
   @Post('expenses/:id/approve')
-  @ApiOperation({ summary: '审批报销单' })
-  approveExpense(@Param('id') id: string, @Body() body: { approve: boolean }) {
-    return this.service.approveExpense(id, body.approve);
+  @ApiOperation({ summary: '审批报销单（支持审批意见）' })
+  approveExpense(@Param('id') id: string, @Body() body: { approve: boolean; opinion?: string }, @CurrentUser('id') userId: string, @CurrentUser('realName') userName: string) {
+    return this.service.approveExpense(id, body.approve, userId, userName, body.opinion);
+  }
+
+  @Post('expenses/:id/forward')
+  @ApiOperation({ summary: '转签报销单给其他审批人' })
+  forwardExpense(@Param('id') id: string, @Body() body: { toUserId: string; toUserName: string; opinion?: string }, @CurrentUser('id') userId: string, @CurrentUser('realName') userName: string) {
+    return this.service.forwardApproval('EXPENSE', id, userId, userName, body.toUserId, body.toUserName, body.opinion);
+  }
+
+  @Get('approval-records/:bizType/:bizId')
+  @ApiOperation({ summary: '查询审批记录' })
+  getApprovalRecords(@Param('bizType') bizType: string, @Param('bizId') bizId: string) {
+    return this.service.getApprovalRecords(bizType, bizId);
   }
 
   @Post('expenses/:id/confirm-payment')

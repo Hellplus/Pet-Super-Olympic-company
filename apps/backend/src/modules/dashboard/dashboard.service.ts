@@ -14,8 +14,7 @@ import { User } from '../user/entities/user.entity';
 import { Organization } from '../organization/entities/organization.entity';
 import { SettlementBill } from '../finance/entities/settlement-bill.entity';
 import { Announcement } from '../event/entities/announcement.entity';
-import { AnnouncementRead } from '../event/entities/announcement-read.entity';
-import { ExpertCertificate } from '../branch-hr/entities/expert-certificate.entity';
+// Certificate warnings use raw SQL query, no entity import needed
 
 @Injectable()
 export class DashboardService {
@@ -231,15 +230,15 @@ export class DashboardService {
     }));
 
     // 5. 未缴清算账单
-    const unpaidSettlements = await this.settlementRepo.createQueryBuilder('s')
-      .select(['s.id', 's.settlementPeriod', 's.totalCommission', 's.createdAt'])
+    const unpaidSettlements = this.settlementRepo.createQueryBuilder('s')
+      .select(['s.id', 's.period', 's.commissionAmount', 's.createdAt'])
       .where('s.deletedAt IS NULL')
       .andWhere('s.status = :s', { s: 0 });
     if (!isSuperAdmin) unpaidSettlements.andWhere('s.orgId = :orgId', { orgId });
     const settlements = await unpaidSettlements.orderBy('s.createdAt', 'DESC').take(10).getMany();
     settlements.forEach(s => todos.push({
-      type: 'settlement', title: `清算账单待缴款: ${s.settlementPeriod}`,
-      description: `应缴金额 ¥${s.totalCommission}`,
+      type: 'settlement', title: `清算账单待缴款: ${s.period}`,
+      description: `应缴金额 ¥${s.commissionAmount}`,
       link: '/finance/settlement', time: s.createdAt, id: s.id,
     }));
 

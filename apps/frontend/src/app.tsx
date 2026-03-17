@@ -130,6 +130,9 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     }
   },
   menuHeaderRender: undefined,
+  breakpoint: 'lg',
+  collapsedButtonRender: undefined,
+  defaultCollapsed: typeof window !== 'undefined' && window.innerWidth < 992,
   token: {
     header: { colorBgHeader: '#fff', colorHeaderTitle: '#1a1a2e' },
     sider: { colorMenuBackground: '#fff', colorTextMenu: '#595959', colorTextMenuSelected: '#1890ff', colorBgMenuItemSelected: '#e6f7ff' },

@@ -7,6 +7,7 @@ import { EventBudget } from './entities/event-budget.entity';
 import { BudgetItem } from './entities/budget-item.entity';
 import { ExpenseRequest } from './entities/expense-request.entity';
 import { ApprovalConfig } from './entities/approval-config.entity';
+import { ApprovalRecord } from '../branch-hr/entities/approval-record.entity';
 import { CreateRevenueDto, QueryRevenueDto, CreateEventBudgetDto, CreateExpenseDto, QueryExpenseDto, ConfirmPaymentDto } from './dto/finance.dto';
 
 @Injectable()
@@ -18,6 +19,7 @@ export class FinanceService {
     @InjectRepository(BudgetItem) private readonly budgetItemRepo: Repository<BudgetItem>,
     @InjectRepository(ExpenseRequest) private readonly expenseRepo: Repository<ExpenseRequest>,
     @InjectRepository(ApprovalConfig) private readonly approvalConfigRepo: Repository<ApprovalConfig>,
+    @InjectRepository(ApprovalRecord) private readonly approvalRecordRepo: Repository<ApprovalRecord>,
   ) {}
 
   // ====== 收款登记 ======
@@ -78,10 +80,16 @@ export class FinanceService {
     return saved;
   }
 
-  async approveBudget(id: string, approve: boolean) {
+  async approveBudget(id: string, approve: boolean, userId?: string, userName?: string, opinion?: string) {
     const b = await this.budgetRepo.findOneOrFail({ where: { id } });
     b.status = approve ? 1 : 2;
-    return this.budgetRepo.save(b);
+    await this.budgetRepo.save(b);
+    // 记录审批记录
+    await this.approvalRecordRepo.save(this.approvalRecordRepo.create({
+      bizType: 'BUDGET', bizId: id, step: 1, stepName: approve ? '审批通过' : '审批驳回',
+      approverId: userId || '', approverName: userName || '', result: approve ? 1 : 2, opinion: opinion || '',
+    }));
+    return b;
   }
 
   async findBudgetById(id: string) {
@@ -146,13 +154,19 @@ export class FinanceService {
     return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
   }
 
-  async approveExpense(id: string, approve: boolean) {
+  async approveExpense(id: string, approve: boolean, userId?: string, userName?: string, opinion?: string) {
     const e = await this.expenseRepo.findOneOrFail({ where: { id } });
+    const prevStatus = e.status;
     if (approve) {
       const route = await this.getApprovalRoute('EXPENSE', Number(e.amount));
       if (route && route.approvalLevel === 'HQ' && e.status === 1) {
-        e.status = 2;
-        return this.expenseRepo.save(e);
+        e.status = 2; // 需要总部复审
+        await this.expenseRepo.save(e);
+        await this.approvalRecordRepo.save(this.approvalRecordRepo.create({
+          bizType: 'EXPENSE', bizId: id, step: 1, stepName: '地方初审通过',
+          approverId: userId || '', approverName: userName || '', result: 1, opinion: opinion || '',
+        }));
+        return e;
       }
       e.status = 3;
     } else {
@@ -163,7 +177,33 @@ export class FinanceService {
         .set({ usedAmount: () => `used_amount + ${Number(e.amount)}`, remainingAmount: () => `remaining_amount - ${Number(e.amount)}` })
         .where('id = :id', { id: e.budgetId }).execute();
     }
-    return this.expenseRepo.save(e);
+    await this.expenseRepo.save(e);
+    // 记录审批记录
+    const step = prevStatus === 2 ? 2 : 1;
+    const stepName = approve ? (step === 2 ? '总部终审通过' : '审批通过') : '审批驳回';
+    await this.approvalRecordRepo.save(this.approvalRecordRepo.create({
+      bizType: 'EXPENSE', bizId: id, step, stepName,
+      approverId: userId || '', approverName: userName || '', result: approve ? 1 : 2, opinion: opinion || '',
+    }));
+    return e;
+  }
+
+  /** 转签（委派给其他审批人） */
+  async forwardApproval(bizType: string, bizId: string, fromUserId: string, fromUserName: string, toUserId: string, toUserName: string, opinion?: string) {
+    await this.approvalRecordRepo.save(this.approvalRecordRepo.create({
+      bizType, bizId, step: 0, stepName: '转签',
+      approverId: fromUserId, approverName: fromUserName, result: 0,
+      opinion: `转签给 ${toUserName}: ${opinion || ''}`,
+    }));
+    return { success: true, message: `已转签给 ${toUserName}` };
+  }
+
+  /** 查询审批记录 */
+  async getApprovalRecords(bizType: string, bizId: string) {
+    return this.approvalRecordRepo.find({
+      where: { bizType, bizId },
+      order: { createdAt: 'ASC' },
+    });
   }
 
   async confirmPayment(id: string, dto: ConfirmPaymentDto) {
