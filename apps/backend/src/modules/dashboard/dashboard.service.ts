@@ -281,21 +281,22 @@ export class DashboardService {
 
     // 8. 未读公告
     const unreadAnnouncements = await this.announcementRepo.manager.query(`
-      SELECT a.id, a.title, a.type, a.created_at as "createdAt", a.publish_time as "publishTime"
+      SELECT a.id, a.title, a.announcement_type as "announcementType",
+             a.created_at as "createdAt", a.published_at as "publishedAt"
       FROM biz_announcement a
       WHERE a.deleted_at IS NULL
         AND a.status = 1
         AND a.id NOT IN (
           SELECT ar.announcement_id FROM biz_announcement_read ar WHERE ar.user_id = $1
         )
-      ORDER BY a.publish_time DESC LIMIT 10
+      ORDER BY a.published_at DESC LIMIT 10
     `, [userId]);
     unreadAnnouncements.forEach((a: any) => {
-      const typeMap: Record<string, string> = { red_header: '红头文件', urgent: '紧急通知', normal: '普通公告' };
+      const typeMap: Record<string, string> = { RED_HEADER: '红头文件', URGENT: '紧急通知', NORMAL: '普通公告' };
       todos.push({
         type: 'unread_announcement', title: `未读公告: ${a.title}`,
-        description: `[${typeMap[a.type] || a.type}] 发布于 ${a.publishTime ? new Date(a.publishTime).toLocaleString('zh-CN') : ''}`,
-        link: '/event/announcement', time: a.publishTime || a.createdAt, id: a.id,
+        description: `[${typeMap[a.announcementType] || a.announcementType}] 发布于 ${a.publishedAt ? new Date(a.publishedAt).toLocaleString('zh-CN') : ''}`,
+        link: '/event/announcement', time: a.publishedAt || a.createdAt, id: a.id,
       });
     });
 
