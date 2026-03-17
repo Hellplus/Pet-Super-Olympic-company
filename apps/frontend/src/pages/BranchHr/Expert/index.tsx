@@ -38,6 +38,16 @@ const ExpertPage: React.FC = () => {
     loadCerts(expert.id);
   };
 
+  const [editCert, setEditCert] = useState<any>(null);
+
+  const handleDeleteCert = async (certId: string) => {
+    try {
+      await api.deleteCertificate(certId);
+      message.success('已删除');
+      loadCerts(certExpert.id);
+    } catch { message.error('删除失败'); }
+  };
+
   const certColumns = [
     { title: '证书名称', dataIndex: 'certName', key: 'certName' },
     { title: '证书编号', dataIndex: 'certNo', key: 'certNo', render: (v: any) => v || '-' },
@@ -57,6 +67,16 @@ const ExpertPage: React.FC = () => {
         if (days < 30) return <Tag color="orange">剩余 {days} 天</Tag>;
         return <Tag color="green">有效</Tag>;
       },
+    },
+    { title: '操作', key: 'action', width: 120,
+      render: (_: any, r: any) => (
+        <Space>
+          <a onClick={() => { setEditCert(r); setAddCertVisible(true); }}>编辑</a>
+          <Popconfirm title="确认删除此证书？" onConfirm={() => handleDeleteCert(r.id)}>
+            <a style={{ color: 'red' }}>删除</a>
+          </Popconfirm>
+        </Space>
+      ),
     },
   ];
 
@@ -112,8 +132,10 @@ const ExpertPage: React.FC = () => {
         <ProFormText name="name" label="姓名" rules={[{ required: true }]} />
         <ProFormSelect name="expertType" label="专家类型" rules={[{ required: true }]} valueEnum={{ JUDGE: '国际裁判', VET: '权威兽医', BEHAVIOR: '行为专家', OTHER: '其他' }} />
         <ProFormDigit name="starLevel" label="星级" min={1} max={5} />
-        <ProFormText name="phone" label="手机号" />
-        <ProFormText name="email" label="邮箱" />
+        <ProFormText name="phone" label="手机号"
+          rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码' }]} />
+        <ProFormText name="email" label="邮箱"
+          rules={[{ type: 'email', message: '请输入正确的邮箱地址' }]} />
         <ProFormText name="nationality" label="国籍" />
         <ProFormTextArea name="bio" label="专业简介" />
       </ModalForm>
@@ -130,17 +152,25 @@ const ExpertPage: React.FC = () => {
           locale={{ emptyText: <Empty description="暂无证书，请点击上方按钮添加" /> }} />
       </Modal>
 
-      {/* 添加证书表单 */}
-      <ModalForm title="添加证书" open={addCertVisible} onOpenChange={setAddCertVisible}
+      {/* 添加/编辑证书表单 */}
+      <ModalForm title={editCert ? '编辑证书' : '添加证书'} open={addCertVisible}
+        onOpenChange={(v) => { setAddCertVisible(v); if (!v) setEditCert(null); }}
+        initialValues={editCert || {}}
         modalProps={{ destroyOnClose: true }}
         onFinish={async (values) => {
           try {
-            await api.addCertificate(certExpert.id, values);
-            message.success('证书添加成功');
+            if (editCert) {
+              await api.updateCertificate(editCert.id, values);
+              message.success('证书更新成功');
+            } else {
+              await api.addCertificate(certExpert.id, values);
+              message.success('证书添加成功');
+            }
             loadCerts(certExpert.id);
+            setEditCert(null);
             return true;
           } catch (error: any) {
-            message.error(error?.data?.message || error?.message || '添加失败');
+            message.error(error?.data?.message || error?.message || '操作失败');
             return false;
           }
         }}>

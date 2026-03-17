@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Card, Col, Row, Statistic, Tag, Progress, Empty, Spin, List } from 'antd';
 import {
   DollarOutlined, TrophyOutlined, FundOutlined,
-  CheckCircleOutlined, ClockCircleOutlined,
+  CheckCircleOutlined, RightOutlined,
 } from '@ant-design/icons';
 import { Column, Line } from '@ant-design/charts';
+import { history } from '@umijs/max';
 import { getBranchStats } from '../../services/dashboard';
 
 const BranchDashboard: React.FC = () => {
@@ -49,19 +50,26 @@ const BranchDashboard: React.FC = () => {
     <div>
       <Row gutter={[16, 16]}>
         <Col xs={24} sm={8}>
-          <Card><Statistic title="赞助合同总数" value={Number(sponsorStats.contractCount || 0)} prefix={<FundOutlined />} /></Card>
+          <Card hoverable onClick={() => history.push('/sponsorship/contracts')} style={{ cursor: 'pointer' }}>
+            <Statistic title="赞助合同总数" value={Number(sponsorStats.contractCount || 0)} prefix={<FundOutlined />} />
+          </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card><Statistic title="招商总额" value={Number(sponsorStats.totalAmount || 0)} precision={2} prefix={<DollarOutlined />} suffix="元" valueStyle={{ color: '#cf1322' }} /></Card>
+          <Card hoverable onClick={() => history.push('/sponsorship/contracts')} style={{ cursor: 'pointer' }}>
+            <Statistic title="招商总额" value={Number(sponsorStats.totalAmount || 0)} precision={2} prefix={<DollarOutlined />} suffix="元" valueStyle={{ color: '#cf1322' }} />
+          </Card>
         </Col>
         <Col xs={24} sm={8}>
-          <Card><Statistic title="累计收入" value={totalRevenue} precision={2} prefix={<CheckCircleOutlined />} suffix="元" valueStyle={{ color: '#3f8600' }} /></Card>
+          <Card hoverable onClick={() => history.push('/finance/revenue')} style={{ cursor: 'pointer' }}>
+            <Statistic title="累计收入" value={totalRevenue} precision={2} prefix={<CheckCircleOutlined />} suffix="元" valueStyle={{ color: '#3f8600' }} />
+          </Card>
         </Col>
       </Row>
 
       <Row gutter={[16, 16]} style={{ marginTop: 16 }}>
         <Col xs={24} lg={12}>
-          <Card title="预算消耗健康度" size="small">
+          <Card title="预算消耗健康度" size="small"
+            extra={<a onClick={() => history.push('/finance/budget')}>查看详情 <RightOutlined /></a>}>
             {budgetChartData.length > 0 ? (
               <Column data={budgetChartData} xField="name" yField="pct" height={280}
                 color={(datum: any) => datum.pct > 90 ? '#f5222d' : datum.pct > 70 ? '#faad14' : '#52c41a'}
@@ -73,7 +81,8 @@ const BranchDashboard: React.FC = () => {
           </Card>
         </Col>
         <Col xs={24} lg={12}>
-          <Card title="月度收入趋势" size="small">
+          <Card title="月度收入趋势" size="small"
+            extra={<a onClick={() => history.push('/finance/revenue')}>查看详情 <RightOutlined /></a>}>
             {revenueChartData.length > 0 ? (
               <Line data={revenueChartData} xField="month" yField="value" height={280}
                 color="#1890ff"
@@ -86,13 +95,15 @@ const BranchDashboard: React.FC = () => {
         </Col>
       </Row>
 
-      <Card title="赛事任务进度" size="small" style={{ marginTop: 16 }}>
+      <Card title="赛事任务进度" size="small" style={{ marginTop: 16 }}
+        extra={<a onClick={() => history.push('/event/sop-progress')}>查看详情 <RightOutlined /></a>}>
         {eventProgress.length > 0 ? (
           <List dataSource={eventProgress}
             renderItem={(item: any) => {
               const s = eventStatusMap[item.status] || { color: 'default', text: item.status };
               return (
-                <List.Item extra={<Progress percent={Number(item.progress || 0)} size="small" style={{ width: 150 }} />}>
+                <List.Item style={{ cursor: 'pointer' }} onClick={() => history.push('/event/sop-progress')}
+                  extra={<Progress percent={Number(item.progress || 0)} size="small" style={{ width: 150 }} />}>
                   <List.Item.Meta
                     avatar={<TrophyOutlined style={{ fontSize: 20, color: '#1890ff' }} />}
                     title={<>{item.name} <Tag color={s.color}>{s.text}</Tag></>}
