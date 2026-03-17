@@ -244,7 +244,8 @@ export class DashboardService {
 
     // 6. 即将到期的证书（30天内）
     const certWarnings = await this.expertRepo.manager.query(`
-      SELECT c.id, c.cert_no as "certNo", c.issuer_name as "issuerName",
+      SELECT c.id, c.cert_no as "certNo", c.cert_name as "certName",
+             c.issuing_authority as "issuingAuthority",
              c.expiry_date as "expiryDate", c.created_at as "createdAt",
              e.name as "expertName"
       FROM biz_expert_certificate c
@@ -255,7 +256,7 @@ export class DashboardService {
     `);
     certWarnings.forEach((c: any) => todos.push({
       type: 'cert_warning', title: `证书即将到期: ${c.certNo}`,
-      description: `${c.expertName || ''} - ${c.issuerName || ''} 到期日: ${c.expiryDate}`,
+      description: `${c.expertName || ''} - ${c.certName || ''} 到期日: ${c.expiryDate}`,
       link: '/branch-hr/cert-warning', time: c.createdAt, id: c.id,
     }));
 
