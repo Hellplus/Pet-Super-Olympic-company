@@ -1,9 +1,10 @@
 import React, { useRef, useState } from 'react';
-import { PageContainer, ProTable, ModalForm, ProFormDigit } from '@ant-design/pro-components';
+import { PageContainer, ProTable, ModalForm, ProFormDigit, ProFormSelect } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { Button, Tag, Space, message, Modal, Image, Descriptions, Progress } from 'antd';
-import { CameraOutlined, FileTextOutlined, CheckCircleOutlined } from '@ant-design/icons';
+import { CameraOutlined } from '@ant-design/icons';
 import FileUpload from '../../../components/FileUpload';
+import * as api from '@/services/sponsorship';
 
 const DeliveryPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
@@ -11,12 +12,25 @@ const DeliveryPage: React.FC = () => {
   const [currentTask, setCurrentTask] = useState<any>(null);
   const [photoModalOpen, setPhotoModalOpen] = useState(false);
   const [selectedPhotos, setSelectedPhotos] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [selectedContract, setSelectedContract] = useState<string | undefined>();
 
   const statusMap: Record<number, { color: string; text: string }> = {
     0: { color: 'default', text: '待执行' },
     1: { color: 'processing', text: '执行中' },
     2: { color: 'success', text: '已完成' },
   };
+
+  // 加载合同列表
+  const loadContracts = async () => {
+    try {
+      const res = await api.getContracts({ status: 1, pageSize: 200 });
+      const items = res.data?.items || res.data || [];
+      setContracts(Array.isArray(items) ? items : []);
+    } catch { setContracts([]); }
+  };
+
+  React.useEffect(() => { loadContracts(); }, []);
 
   const columns: ProColumns[] = [
     { title: '任务名称', dataIndex: 'taskName', ellipsis: true },
@@ -58,13 +72,39 @@ const DeliveryPage: React.FC = () => {
 
   return (
     <PageContainer>
+      <div style={{ marginBottom: 16 }}>
+        <span style={{ marginRight: 8, fontWeight: 500 }}>选择合同：</span>
+        <ProFormSelect
+          fieldProps={{
+            style: { width: 360 },
+            value: selectedContract,
+            onChange: (v: any) => { setSelectedContract(v); actionRef.current?.reload(); },
+            allowClear: true,
+            showSearch: true,
+            placeholder: '请选择合同查看交付任务',
+            options: contracts.map((c: any) => ({
+              label: `${c.contractNo || ''} - ${c.clientName || c.sponsorName || ''}`,
+              value: c.id,
+            })),
+          }}
+          noStyle
+        />
+      </div>
       <ProTable
         columns={columns}
         actionRef={actionRef}
         rowKey="id"
-        search={{ labelWidth: 'auto' }}
-        request={async () => ({ data: [], success: true, total: 0 })}
+        search={false}
+        request={async () => {
+          if (!selectedContract) return { data: [], success: true, total: 0 };
+          try {
+            const res = await api.getDeliveryTasks(selectedContract);
+            const list = res?.data || res || [];
+            return { data: Array.isArray(list) ? list : [], success: true, total: Array.isArray(list) ? list.length : 0 };
+          } catch { return { data: [], success: true, total: 0 }; }
+        }}
         headerTitle="权益交付任务"
+        locale={{ emptyText: selectedContract ? '该合同暂无交付任务' : '请先选择一个合同' }}
       />
 
       {/* 提交证据弹窗 */}
@@ -73,9 +113,15 @@ const DeliveryPage: React.FC = () => {
         open={evidenceModalOpen}
         onOpenChange={setEvidenceModalOpen}
         onFinish={async (values) => {
-          message.success('证据提交成功！照片已自动叠加水印元数据');
-          actionRef.current?.reload();
-          return true;
+          try {
+            await api.submitEvidence(currentTask.id, values);
+            message.success('证据提交成功');
+            actionRef.current?.reload();
+            return true;
+          } catch (error: any) {
+            message.error(error?.data?.message || '提交失败');
+            return false;
+          }
         }}
       >
         <Descriptions bordered size="small" column={2} style={{ marginBottom: 16 }}>

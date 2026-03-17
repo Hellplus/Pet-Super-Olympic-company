@@ -2,31 +2,29 @@ import React, { useRef, useState } from 'react';
 import { PageContainer } from '@ant-design/pro-components';
 import { ProTable } from '@ant-design/pro-components';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
-import { Button, Tag, Space, message, Popconfirm, Modal, Watermark, Image, Alert, Typography } from 'antd';
-import { PlusOutlined, DownloadOutlined, CloudUploadOutlined, EyeOutlined, SafetyOutlined } from '@ant-design/icons';
-import { useModel } from '@umijs/max';
+import { Button, Tag, Space, message, Popconfirm, Modal, Watermark, Image, Alert, Typography, Upload, Select, Form } from 'antd';
+import { DownloadOutlined, CloudUploadOutlined, EyeOutlined, SafetyOutlined, InboxOutlined } from '@ant-design/icons';
+import { useModel, request } from '@umijs/max';
 import { queryFiles, deleteFile } from '../../../services/upload';
 
 const { Text } = Typography;
+const { Dragger } = Upload;
 
 const DigitalAssetPage: React.FC = () => {
   const actionRef = useRef<ActionType>();
   const { initialState } = useModel('@@initialState');
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewFile, setPreviewFile] = useState<any>(null);
+  const [uploadModalVisible, setUploadModalVisible] = useState(false);
+  const [uploadBizType, setUploadBizType] = useState('general');
 
   const currentUser = initialState?.currentUser;
-  const watermarkText = currentUser
-    ? `${currentUser.realName || currentUser.username} ${new Date().toLocaleDateString()}`
-    : 'IPOC内部文件';
 
-  /** 带水印预览 */
   const handlePreview = (record: any) => {
     setPreviewFile(record);
     setPreviewVisible(true);
   };
 
-  /** 带水印下载（追加水印参数） */
   const handleDownload = (record: any) => {
     const params = new URLSearchParams({
       watermark: '1',
@@ -104,11 +102,57 @@ const DigitalAssetPage: React.FC = () => {
         }}
         toolBarRender={() => [
           <Button key="upload" type="primary" icon={<CloudUploadOutlined />}
-            onClick={() => message.info('请使用各业务模块内的上传功能')}>
+            onClick={() => setUploadModalVisible(true)}>
             IP资产上传
           </Button>,
         ]}
       />
+
+      {/* 上传弹窗 */}
+      <Modal
+        title={<><CloudUploadOutlined /> 上传IP数字资产</>}
+        open={uploadModalVisible}
+        onCancel={() => setUploadModalVisible(false)}
+        footer={null}
+        width={600}
+        destroyOnClose
+      >
+        <div style={{ marginBottom: 16 }}>
+          <span style={{ marginRight: 8 }}>资产分类：</span>
+          <Select
+            value={uploadBizType}
+            onChange={setUploadBizType}
+            style={{ width: 200 }}
+            options={[
+              { label: '通用资产', value: 'general' },
+              { label: '赛事素材', value: 'event_material' },
+              { label: '品牌logo', value: 'brand_logo' },
+              { label: '合同文件', value: 'contract_file' },
+              { label: '宣传物料', value: 'promo_material' },
+              { label: '现场照片', value: 'event_photo' },
+            ]}
+          />
+        </div>
+        <Dragger
+          name="file"
+          multiple
+          action="/api/v1/upload"
+          data={{ bizType: uploadBizType, accessLevel: 'internal' }}
+          accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.mp4,.zip"
+          onChange={(info) => {
+            if (info.file.status === 'done') {
+              message.success(`${info.file.name} 上传成功`);
+              actionRef.current?.reload();
+            } else if (info.file.status === 'error') {
+              message.error(`${info.file.name} 上传失败`);
+            }
+          }}
+        >
+          <p className="ant-upload-drag-icon"><InboxOutlined /></p>
+          <p className="ant-upload-text">点击或拖拽文件到此区域上传</p>
+          <p className="ant-upload-hint">支持图片、文档、视频、压缩包等格式，单文件最大50MB</p>
+        </Dragger>
+      </Modal>
 
       {/* 防泄密水印预览弹窗 */}
       <Modal

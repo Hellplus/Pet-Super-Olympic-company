@@ -113,8 +113,9 @@ const Settings: React.FC = () => {
               <Form.Item name="email" label="邮箱" rules={[{ type: 'email', message: '请输入正确的邮箱格式' }]}>
                 <Input placeholder="请输入邮箱" />
               </Form.Item>
-              <Form.Item name="phone" label="手机号">
-                <Input placeholder="请输入手机号" />
+              <Form.Item name="phone" label="手机号"
+                rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码' }]}>
+                <Input placeholder="请输入手机号" maxLength={11} />
               </Form.Item>
               <Form.Item name="gender" label="性别">
                 <Select options={genderOptions} />

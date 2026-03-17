@@ -1,11 +1,12 @@
 import React, { useRef, useState } from 'react';
 import { PageContainer, ProTable, ModalForm, ProFormText, ProFormDigit, ProFormSelect, ProFormTextArea, ProFormTreeSelect } from '@ant-design/pro-components';
-import { Button, message, Tag, Space, Modal, Upload, Alert, Typography, Divider, Input, Drawer, Timeline, Descriptions } from 'antd';
+import { Button, message, Tag, Space, Modal, Upload, Alert, Typography, Divider, Input, Drawer, Timeline, Descriptions, Select } from 'antd';
 import { PlusOutlined, UploadOutlined, ExclamationCircleOutlined, CheckCircleOutlined, HistoryOutlined, SendOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { request } from '@umijs/max';
 import * as api from '@/services/finance';
 import * as orgApi from '@/services/organization';
+import * as userApi from '@/services/user';
 import ImportExport from '@/components/ImportExport';
 import { exportExpenses } from '@/services/export';
 
@@ -46,6 +47,7 @@ const ExpensePage: React.FC = () => {
   const [forwardUserName, setForwardUserName] = useState('');
   const [forwardOpinion, setForwardOpinion] = useState('');
   const [forwardLoading, setForwardLoading] = useState(false);
+  const [userOptions, setUserOptions] = useState<any[]>([]);
 
   const loadOrgTree = async () => {
     try {
@@ -248,12 +250,30 @@ const ExpensePage: React.FC = () => {
           <>
             <Alert message={`将报销单 ${forwardModal.expenseNo} 转签给其他审批人处理`} type="info" showIcon style={{ marginBottom: 16 }} />
             <div style={{ marginBottom: 12 }}>
-              <div style={{ marginBottom: 4, fontWeight: 500 }}>目标审批人ID：</div>
-              <Input placeholder="请输入目标审批人的用户ID" value={forwardUserId} onChange={(e) => setForwardUserId(e.target.value)} />
-            </div>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ marginBottom: 4, fontWeight: 500 }}>目标审批人姓名：</div>
-              <Input placeholder="请输入目标审批人姓名" value={forwardUserName} onChange={(e) => setForwardUserName(e.target.value)} />
+              <div style={{ marginBottom: 4, fontWeight: 500 }}>选择目标审批人：</div>
+              <Select
+                showSearch
+                placeholder="搜索用户姓名或账号"
+                style={{ width: '100%' }}
+                filterOption={false}
+                onSearch={async (keyword) => {
+                  if (!keyword || keyword.length < 1) return;
+                  try {
+                    const res = await userApi.getUsers({ keyword, pageSize: 20 });
+                    const items = res.data?.items || res.data || [];
+                    setUserOptions(Array.isArray(items) ? items.map((u: any) => ({
+                      label: `${u.realName || u.username} (${u.username})`,
+                      value: u.id,
+                      user: u,
+                    })) : []);
+                  } catch { setUserOptions([]); }
+                }}
+                onChange={(value, option: any) => {
+                  setForwardUserId(value as string);
+                  setForwardUserName(option?.user?.realName || option?.user?.username || '');
+                }}
+                options={userOptions}
+              />
             </div>
             <div>
               <div style={{ marginBottom: 4, fontWeight: 500 }}>转签说明：</div>

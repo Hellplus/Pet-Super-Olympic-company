@@ -160,8 +160,10 @@ const ClientPage: React.FC = () => {
             <ProFormText name="companyName" label="客户全称" rules={[{ required: true, message: '请输入客户名称' }]}
               placeholder="公司/品牌全称" />
             <ProFormText name="contactPerson" label="联系人" placeholder="主要对接人" />
-            <ProFormText name="contactPhone" label="联系电话" placeholder="手机或固话" />
-            <ProFormText name="email" label="电子邮箱" placeholder="企业邮箱" />
+            <ProFormText name="contactPhone" label="联系电话" placeholder="手机或固话"
+              rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码' }]} />
+            <ProFormText name="email" label="电子邮箱" placeholder="企业邮箱"
+              rules={[{ type: 'email', message: '请输入正确的邮箱地址' }]} />
             <ProFormText name="category" label="所属品类" placeholder="如：宠物食品、宠物医疗" />
             <ProFormDigit name="intendedAmount" label="意向金额(元)" min={0} fieldProps={{ precision: 2 }}
               placeholder="初步意向赞助金额" />
@@ -182,8 +184,10 @@ const ClientPage: React.FC = () => {
       >
         <ProFormText name="companyName" label="客户全称" rules={[{ required: true }]} />
         <ProFormText name="contactPerson" label="联系人" />
-        <ProFormText name="contactPhone" label="联系电话" />
-        <ProFormText name="email" label="电子邮箱" />
+        <ProFormText name="contactPhone" label="联系电话"
+          rules={[{ pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号码' }]} />
+        <ProFormText name="email" label="电子邮箱"
+          rules={[{ type: 'email', message: '请输入正确的邮箱地址' }]} />
         <ProFormText name="category" label="所属品类" />
         <ProFormDigit name="intendedAmount" label="意向金额(元)" min={0} fieldProps={{ precision: 2 }} />
         <ProFormTextArea name="remark" label="备注" />
