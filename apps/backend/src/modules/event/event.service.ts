@@ -55,7 +55,13 @@ export class EventService {
   async findEventById(id: string) {
     const event = await this.eventRepo.findOne({ where: { id } });
     if (!event) throw new NotFoundException('赛事不存在');
-    const tasks = await this.eventTaskRepo.find({ where: { eventId: id }, order: { sortOrder: 'ASC' } });
+    const allTasks = await this.eventTaskRepo.find({ where: { eventId: id }, order: { sortOrder: 'ASC' } });
+    // 构建树结构：主任务+子任务
+    const parentTasks = allTasks.filter(t => !t.parentTaskId);
+    const tasks = parentTasks.map(p => ({
+      ...p,
+      children: allTasks.filter(c => c.parentTaskId === p.id),
+    }));
     return { ...event, tasks };
   }
 
@@ -184,6 +190,40 @@ export class EventService {
   }
 
   // ====== 赛事任务 ======
+  /** 添加子任务 */
+  async createSubtask(parentTaskId: string, data: { taskName: string; deadline?: string; assigneeId?: string; assigneeName?: string }) {
+    const parent = await this.eventTaskRepo.findOne({ where: { id: parentTaskId } });
+    if (!parent) throw new NotFoundException('父任务不存在');
+    const maxOrder = await this.eventTaskRepo.createQueryBuilder('t')
+      .where('t.parent_task_id = :pid', { pid: parentTaskId })
+      .select('MAX(t.sort_order)', 'maxSort').getRawOne();
+    const subtask = new EventTask();
+    subtask.eventId = parent.eventId;
+    subtask.parentTaskId = parentTaskId;
+    subtask.taskName = data.taskName;
+    subtask.deadline = data.deadline ? new Date(data.deadline) : parent.deadline;
+    if (data.assigneeId) subtask.assigneeId = data.assigneeId;
+    if (data.assigneeName) subtask.assigneeName = data.assigneeName;
+    subtask.sortOrder = (maxOrder?.maxSort || 0) + 1;
+    return this.eventTaskRepo.save(subtask);
+  }
+
+  /** 指派任务负责人 */
+  async assignTask(taskId: string, assigneeId: string, assigneeName: string) {
+    await this.eventTaskRepo.update(taskId, { assigneeId, assigneeName });
+    return { success: true };
+  }
+
+  /** 获取赛事任务树（含子任务） */
+  async getEventTasks(eventId: string) {
+    const allTasks = await this.eventTaskRepo.find({ where: { eventId }, order: { sortOrder: 'ASC' } });
+    const parentTasks = allTasks.filter(t => !t.parentTaskId);
+    return parentTasks.map(p => ({
+      ...p,
+      children: allTasks.filter(c => c.parentTaskId === p.id),
+    }));
+  }
+
   async updateTaskStatus(taskId: string, status: number, feedback?: string) {
     const update: any = { status };
     if (status === 2) update.completedAt = new Date();

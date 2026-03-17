@@ -127,6 +127,25 @@ export class EventController {
   @Get('digital-assets')
   findAllAssets() { return this.service.findAllAssets(); }
 
+  // --- 子任务 + 指派 ---
+  @Post('tasks/:taskId/subtasks')
+  @ApiOperation({ summary: '添加子任务' })
+  createSubtask(@Param('taskId') taskId: string, @Body() body: { taskName: string; deadline?: string; assigneeId?: string; assigneeName?: string }) {
+    return this.service.createSubtask(taskId, body);
+  }
+
+  @Put('tasks/:taskId/assign')
+  @ApiOperation({ summary: '指派任务负责人' })
+  assignTask(@Param('taskId') taskId: string, @Body() body: { assigneeId: string; assigneeName: string }) {
+    return this.service.assignTask(taskId, body.assigneeId, body.assigneeName);
+  }
+
+  @Get('event-tasks/:eventId')
+  @ApiOperation({ summary: '获取赛事任务树（含子任务）' })
+  getEventTasks(@Param('eventId') eventId: string) {
+    return this.service.getEventTasks(eventId);
+  }
+
   // --- 任务状态 ---
   @Post('tasks/:taskId/status')
   updateTaskStatus(@Param('taskId') taskId: string, @Body() body: { status: number; feedback?: string }) {

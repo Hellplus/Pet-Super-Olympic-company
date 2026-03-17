@@ -18,6 +18,9 @@ export async function deleteUser(id: string) {
 export async function assignRoles(userId: string, roleIds: string[]) {
   return request('/users/' + userId + '/assign-roles', { method: 'POST', data: { roleIds } });
 }
+export async function resetPassword(id: string) {
+  return request('/users/' + id + '/reset-password', { method: 'POST' });
+}
 export async function disableUser(id: string) {
   return request('/users/' + id + '/disable', { method: 'POST' });
 }

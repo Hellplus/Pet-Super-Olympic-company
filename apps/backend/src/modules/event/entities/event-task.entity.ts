@@ -13,6 +13,13 @@ export class EventTask extends BaseEntity {
   @JoinColumn({ name: 'event_id' })
   event: Event;
 
+  @Column({ name: 'parent_task_id', type: 'uuid', nullable: true, comment: '父任务ID(子任务关联)' })
+  parentTaskId: string;
+
+  @ManyToOne(() => EventTask, { nullable: true })
+  @JoinColumn({ name: 'parent_task_id' })
+  parentTask: EventTask;
+
   @Column({ name: 'task_name', type: 'varchar', length: 200 })
   taskName: string;
 

@@ -50,6 +50,25 @@ export class SponsorshipController {
   @ApiOperation({ summary: '引荐给总部' })
   referToHq(@Param('id') id: string) { return this.service.referToHq(id); }
 
+  // --- 客户跟进记录 ---
+  @Post('clients/:clientId/follow-ups')
+  @ApiOperation({ summary: '新增客户跟进记录' })
+  createFollowUp(@Param('clientId') clientId: string, @Body() body: { contactType: string; content: string; nextFollowDate?: string }, @CurrentUser('id') userId: string, @CurrentUser('realName') userName: string) {
+    return this.service.createFollowUp(clientId, body, userId, userName);
+  }
+
+  @Get('clients/:clientId/follow-ups')
+  @ApiOperation({ summary: '查询客户跟进记录' })
+  getFollowUps(@Param('clientId') clientId: string) {
+    return this.service.getFollowUps(clientId);
+  }
+
+  @Delete('follow-ups/:id')
+  @ApiOperation({ summary: '删除跟进记录' })
+  deleteFollowUp(@Param('id') id: string) {
+    return this.service.deleteFollowUp(id);
+  }
+
   // --- 合同 ---
   @Post('contracts')
   @ApiOperation({ summary: '新建赞助合同' })

@@ -164,6 +164,18 @@ export class UserService {
     await this.userRepo.update(id, { password: hashedPassword });
   }
 
+  /** 管理员重置密码 */
+  async resetPassword(id: string) {
+    const user = await this.userRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('用户不存在');
+    if (user.isSuperAdmin) throw new BadRequestException('不能重置超级管理员密码');
+    const defaultPwd = '123456';
+    const hashedPassword = await bcrypt.hash(defaultPwd, 10);
+    await this.userRepo.update(id, { password: hashedPassword, loginFailCount: 0, lockUntil: undefined as any });
+    await this.cacheManager.del(`user:info:${id}`);
+    return { success: true, defaultPassword: defaultPwd };
+  }
+
   /** 一键封停账号 */
   async disableUser(id: string) {
     await this.userRepo.update(id, { status: 0 });

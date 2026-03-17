@@ -55,6 +55,12 @@ export default defineConfig({
       icon: 'BellOutlined',
     },
     {
+      name: '分部对比',
+      path: '/branch-comparison',
+      component: './Dashboard/BranchComparison',
+      icon: 'BarChartOutlined',
+    },
+    {
       name: '系统管理',
       path: '/system',
       icon: 'SettingOutlined',

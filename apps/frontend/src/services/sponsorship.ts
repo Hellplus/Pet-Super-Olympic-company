@@ -8,6 +8,9 @@ export async function createClient(data: any) { return request('/sponsorship/cli
 export async function updateClient(id: string, data: any) { return request('/sponsorship/clients/' + id, { method: 'PUT', data }); }
 export async function deleteClient(id: string) { return request('/sponsorship/clients/' + id, { method: 'DELETE' }); }
 export async function referToHq(id: string) { return request('/sponsorship/clients/' + id + '/refer-hq', { method: 'POST' }); }
+export async function getFollowUps(clientId: string) { return request('/sponsorship/clients/' + clientId + '/follow-ups', { method: 'GET' }); }
+export async function createFollowUp(clientId: string, data: any) { return request('/sponsorship/clients/' + clientId + '/follow-ups', { method: 'POST', data }); }
+export async function deleteFollowUp(id: string) { return request('/sponsorship/follow-ups/' + id, { method: 'DELETE' }); }
 export async function getContracts(params: any) { return request('/sponsorship/contracts', { method: 'GET', params }); }
 export async function createContract(data: any) { return request('/sponsorship/contracts', { method: 'POST', data }); }
 export async function activateContract(id: string) { return request('/sponsorship/contracts/' + id + '/activate', { method: 'POST' }); }

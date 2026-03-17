@@ -33,13 +33,14 @@ const AuditLogPage: React.FC = () => {
 
   const columns: ProColumns[] = [
     { title: '操作人', dataIndex: 'username', width: 100 },
-    { title: '姓名', dataIndex: 'realName', width: 80, hideInSearch: true },
+    { title: '姓名', dataIndex: 'realName', width: 80 },
     { title: '模块', dataIndex: 'module', width: 120 },
     { title: '操作', dataIndex: 'action', width: 80, valueEnum: { CREATE: '新增', UPDATE: '修改', DELETE: '删除', LOGIN: '登录', LOGOUT: '登出' } },
     { title: '描述', dataIndex: 'description', width: 200, hideInSearch: true, ellipsis: true },
     { title: 'IP', dataIndex: 'ip', width: 130 },
     { title: '结果', dataIndex: 'status', width: 60, hideInSearch: true,
       render: (_, r) => <Tag color={r.status === 1 ? 'green' : 'red'}>{r.status === 1 ? '成功' : '失败'}</Tag> },
+    { title: '目标实体', dataIndex: 'entityName', width: 120, ellipsis: true },
     { title: '耗时(ms)', dataIndex: 'duration', width: 80, hideInSearch: true },
     { title: '操作时间', dataIndex: 'createdAt', valueType: 'dateTime', width: 170, hideInSearch: true },
     { title: '操作时间', dataIndex: 'createdAt', valueType: 'dateRange', hideInTable: true,

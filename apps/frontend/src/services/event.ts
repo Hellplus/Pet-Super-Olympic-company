@@ -13,6 +13,9 @@ export async function addTemplateTask(templateId: string, data: any) { return re
 export async function updateTemplateTask(templateId: string, taskId: string, data: any) { return request('/events/sop-templates/' + templateId + '/tasks/' + taskId, { method: 'PUT', data }); }
 export async function deleteTemplateTask(templateId: string, taskId: string) { return request('/events/sop-templates/' + templateId + '/tasks/' + taskId, { method: 'DELETE' }); }
 export async function reorderTemplateTasks(templateId: string, taskIds: string[]) { return request('/events/sop-templates/' + templateId + '/reorder', { method: 'POST', data: { taskIds } }); }
+export async function createSubtask(taskId: string, data: any) { return request('/events/tasks/' + taskId + '/subtasks', { method: 'POST', data }); }
+export async function assignTask(taskId: string, data: { assigneeId: string; assigneeName: string }) { return request('/events/tasks/' + taskId + '/assign', { method: 'PUT', data }); }
+export async function getEventTasks(eventId: string) { return request('/events/event-tasks/' + eventId, { method: 'GET' }); }
 export async function updateTaskStatus(taskId: string, data: any) { return request('/events/tasks/' + taskId + '/status', { method: 'POST', data }); }
 export async function getAnnouncements() { return request('/events/announcements', { method: 'GET' }); }
 export async function createAnnouncement(data: any) { return request('/events/announcements', { method: 'POST', data }); }

@@ -9,4 +9,7 @@ export class QueryAuditLogDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsInt() status?: number;
   @ApiPropertyOptional() @IsOptional() @IsDateString() startTime?: string;
   @ApiPropertyOptional() @IsOptional() @IsDateString() endTime?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() ip?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() realName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() entityName?: string;
 }

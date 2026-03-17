@@ -5,6 +5,7 @@ import { ProtectedCategory } from './entities/protected-category.entity';
 import { SponsorClient } from './entities/sponsor-client.entity';
 import { SponsorContract } from './entities/sponsor-contract.entity';
 import { DeliveryTask } from './entities/delivery-task.entity';
+import { ClientFollowUp } from './entities/client-follow-up.entity';
 import { CreateProtectedCategoryDto, CreateSponsorClientDto, CreateSponsorContractDto, QueryContractDto } from './dto/sponsorship.dto';
 
 
@@ -15,6 +16,7 @@ export class SponsorshipService {
     @InjectRepository(SponsorClient) private readonly clientRepo: Repository<SponsorClient>,
     @InjectRepository(SponsorContract) private readonly contractRepo: Repository<SponsorContract>,
     @InjectRepository(DeliveryTask) private readonly taskRepo: Repository<DeliveryTask>,
+    @InjectRepository(ClientFollowUp) private readonly followUpRepo: Repository<ClientFollowUp>,
   ) {}
 
   // ====== 品类保护 ======
@@ -165,6 +167,24 @@ export class SponsorshipService {
         evidencePhotos: t.evidencePhotos || [],
       })),
     };
+  }
+
+  // ====== 客户跟进记录 ======
+  async createFollowUp(clientId: string, data: { contactType: string; content: string; nextFollowDate?: string }, userId: string, userName: string) {
+    return this.followUpRepo.save(this.followUpRepo.create({
+      clientId, ...data, createdBy: userId, creatorName: userName,
+    }));
+  }
+
+  async getFollowUps(clientId: string) {
+    return this.followUpRepo.find({
+      where: { clientId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async deleteFollowUp(id: string) {
+    return this.followUpRepo.softRemove(await this.followUpRepo.findOneOrFail({ where: { id } }));
   }
 
   async submitEvidence(taskId: string, evidencePhotos: any[], completedQty: number) {

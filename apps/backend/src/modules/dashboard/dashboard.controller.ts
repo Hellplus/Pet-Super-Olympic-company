@@ -39,6 +39,12 @@ export class DashboardController {
     return this.dashboardService.getMyTodos(user.id, user.organizationId, user.isSuperAdmin);
   }
 
+  @Get('branch-comparison')
+  @ApiOperation({ summary: '跨分部数据对比报表' })
+  async getBranchComparison() {
+    return this.dashboardService.getBranchComparison();
+  }
+
   @Get('notification-count')
   @ApiOperation({ summary: '通知计数（轻量，供铃铛轮询）' })
   async getNotificationCount(@CurrentUser() user: any) {

@@ -9,7 +9,7 @@ export class AuditLogService {
   constructor(@InjectRepository(AuditLog) private readonly auditLogRepo: Repository<AuditLog>) {}
 
   async findAll(query: QueryAuditLogDto) {
-    const { page = 1, pageSize = 20, username, module: mod, action, status, startTime, endTime } = query;
+    const { page = 1, pageSize = 20, username, module: mod, action, status, startTime, endTime, ip, realName, entityName } = query;
     const qb = this.auditLogRepo.createQueryBuilder('log');
     if (username) qb.andWhere('log.username LIKE :username', { username: '%' + username + '%' });
     if (mod) qb.andWhere('log.module = :module', { module: mod });
@@ -17,6 +17,9 @@ export class AuditLogService {
     if (status !== undefined) qb.andWhere('log.status = :status', { status });
     if (startTime) qb.andWhere('log.created_at >= :startTime', { startTime });
     if (endTime) qb.andWhere('log.created_at <= :endTime', { endTime });
+    if (ip) qb.andWhere('log.ip LIKE :ip', { ip: '%' + ip + '%' });
+    if (realName) qb.andWhere('log.real_name LIKE :realName', { realName: '%' + realName + '%' });
+    if (entityName) qb.andWhere('log.entity_name LIKE :entityName', { entityName: '%' + entityName + '%' });
     qb.orderBy('log.created_at', 'DESC');
     const [items, total] = await qb.skip((page - 1) * pageSize).take(pageSize).getManyAndCount();
     return { items, total, page, pageSize, totalPages: Math.ceil(total / pageSize) };

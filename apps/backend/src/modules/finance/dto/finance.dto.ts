@@ -9,6 +9,7 @@ export class CreateRevenueDto {
   @ApiProperty() @IsDateString() revenueDate: string;
   @ApiProperty() @IsString() revenueType: string;
   @ApiPropertyOptional() @IsOptional() @IsString() voucherUrl?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() description?: string;
 }
 
 export class QueryRevenueDto extends PaginationDto {

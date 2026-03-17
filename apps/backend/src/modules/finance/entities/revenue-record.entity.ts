@@ -30,6 +30,9 @@ export class RevenueRecord extends BaseEntity {
   @Column({ name: 'voucher_url', type: 'varchar', length: 500, nullable: true, comment: '凭证附件URL' })
   voucherUrl: string;
 
+  @Column({ type: 'text', nullable: true, comment: '备注说明' })
+  description: string;
+
   @Column({ name: 'hq_commission_rate', type: 'decimal', precision: 5, scale: 2, default: 20.00, comment: '总部抽成比例(%)' })
   hqCommissionRate: number;
 

@@ -15,3 +15,7 @@ export async function getHqFinanceStats() {
 export async function getBranchStats() {
   return request('/dashboard/branch');
 }
+
+export async function getBranchComparison() {
+  return request('/dashboard/branch-comparison');
+}

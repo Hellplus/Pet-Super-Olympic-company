@@ -55,6 +55,13 @@ export class UserController {
     return this.userService.assignRoles(id, dto.roleIds);
   }
 
+  @Post(':id/reset-password')
+  @ApiOperation({ summary: '重置密码为默认密码' })
+  @RequirePermissions('system:user:update')
+  resetPassword(@Param('id') id: string) {
+    return this.userService.resetPassword(id);
+  }
+
   @Post(':id/disable')
   @ApiOperation({ summary: '封停账号' })
   @RequirePermissions('system:user:disable')

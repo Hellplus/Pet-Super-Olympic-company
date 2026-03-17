@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { PageContainer, ProTable, ModalForm, ProFormText, ProFormSelect, ProFormTreeSelect } from '@ant-design/pro-components';
 import { Button, message, Popconfirm, Space, Tag } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { PlusOutlined, KeyOutlined } from '@ant-design/icons';
 import type { ActionType, ProColumns } from '@ant-design/pro-components';
 import { useAccess } from '@umijs/max';
 import * as userApi from '@/services/user';
@@ -50,6 +50,11 @@ const UserPage: React.FC = () => {
           ) : access.canDeleteUser && record.status !== 1 ? (
             <a onClick={async () => { await userApi.enableUser(record.id); message.success('已启用'); actionRef.current?.reload(); }}>启用</a>
           ) : null}
+          {access.canDeleteUser && !record.isSuperAdmin && (
+            <Popconfirm title="确认重置密码为 123456 ？" onConfirm={async () => { await userApi.resetPassword(record.id); message.success('密码已重置为: 123456'); }}>
+              <a><KeyOutlined /> 重置密码</a>
+            </Popconfirm>
+          )}
           {access.canDeleteUser && !record.isSuperAdmin && (
             <Popconfirm title="确认删除?" onConfirm={async () => { await userApi.deleteUser(record.id); message.success('已删除'); actionRef.current?.reload(); }}>
               <a style={{ color: 'red' }}>删除</a>

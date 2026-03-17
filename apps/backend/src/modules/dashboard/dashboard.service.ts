@@ -396,4 +396,76 @@ export class DashboardService {
       revenueStats,
     };
   }
+
+  /** 跨分部数据对比报表 */
+  async getBranchComparison() {
+    // 1. 赞助签约额排行
+    const sponsorRanking = await this.contractRepo.manager.query(`
+      SELECT c.org_id as "orgId", o.name as "orgName",
+             COUNT(*) as "contractCount",
+             COALESCE(SUM(c.amount), 0) as "totalAmount"
+      FROM biz_sponsor_contract c
+      LEFT JOIN sys_organization o ON c.org_id = o.id
+      WHERE c.deleted_at IS NULL
+      GROUP BY c.org_id, o.name
+      ORDER BY "totalAmount" DESC
+    `);
+
+    // 2. 赛事完成率排行
+    const eventCompletion = await this.eventRepo.manager.query(`
+      SELECT e.org_id as "orgId", o.name as "orgName",
+             COUNT(DISTINCT e.id) as "eventCount",
+             COUNT(t.id) as "totalTasks",
+             SUM(CASE WHEN t.status = 2 THEN 1 ELSE 0 END) as "completedTasks",
+             CASE WHEN COUNT(t.id) > 0
+               THEN ROUND(SUM(CASE WHEN t.status = 2 THEN 1 ELSE 0 END)::numeric / COUNT(t.id) * 100, 1)
+               ELSE 0 END as "completionRate"
+      FROM biz_event e
+      LEFT JOIN biz_event_task t ON t.event_id = e.id AND t.deleted_at IS NULL
+      LEFT JOIN sys_organization o ON e.org_id = o.id
+      WHERE e.deleted_at IS NULL
+      GROUP BY e.org_id, o.name
+      ORDER BY "completionRate" DESC
+    `);
+
+    // 3. 预算使用率排行
+    const budgetUsage = await this.budgetRepo.manager.query(`
+      SELECT b.org_id as "orgId", o.name as "orgName",
+             COALESCE(SUM(b.total_budget), 0) as "totalBudget",
+             COALESCE(SUM(b.used_amount), 0) as "usedAmount",
+             CASE WHEN SUM(b.total_budget) > 0
+               THEN ROUND(SUM(b.used_amount)::numeric / SUM(b.total_budget) * 100, 1)
+               ELSE 0 END as "usageRate"
+      FROM biz_event_budget b
+      LEFT JOIN sys_organization o ON b.org_id = o.id
+      WHERE b.deleted_at IS NULL
+      GROUP BY b.org_id, o.name
+      ORDER BY "usageRate" DESC
+    `);
+
+    // 4. 专家资源排行
+    const expertRanking = await this.expertRepo.manager.query(`
+      SELECT e.org_id as "orgId", o.name as "orgName",
+             COUNT(*) as "expertCount"
+      FROM biz_expert e
+      LEFT JOIN sys_organization o ON e.org_id = o.id
+      WHERE e.deleted_at IS NULL
+      GROUP BY e.org_id, o.name
+      ORDER BY "expertCount" DESC
+    `);
+
+    // 5. 收入排行
+    const revenueRanking = await this.revenueRepo.manager.query(`
+      SELECT r.org_id as "orgId", o.name as "orgName",
+             COUNT(*) as "recordCount",
+             COALESCE(SUM(r.amount), 0) as "totalRevenue"
+      FROM biz_revenue_record r
+      LEFT JOIN sys_organization o ON r.org_id = o.id
+      WHERE r.deleted_at IS NULL AND r.status = 1
+      GROUP BY r.org_id, o.name
+      ORDER BY "totalRevenue" DESC
+    `);
+
+    return { sponsorRanking, eventCompletion, budgetUsage, expertRanking, revenueRanking };
+  }
 }
